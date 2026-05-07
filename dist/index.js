@@ -29064,6 +29064,15 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+function getAuthString(token, options) {
+    if (!token && !options.auth) {
+        throw new Error('Parameter token or opts.auth is required');
+    }
+    else if (token && options.auth) {
+        throw new Error('Parameters token and opts.auth may not both be specified');
+    }
+    return typeof options.auth === 'string' ? options.auth : `token ${token}`;
+}
 function getProxyAgent(destinationUrl) {
     const hc = new libExports.HttpClient();
     return hc.getAgent(destinationUrl);
@@ -29081,6 +29090,19 @@ function getProxyFetch(destinationUrl) {
 }
 function getApiBaseUrl() {
     return process.env['GITHUB_API_URL'] || 'https://api.github.com';
+}
+function getUserAgentWithOrchestrationId(baseUserAgent) {
+    var _a;
+    const orchId = (_a = process.env['ACTIONS_ORCHESTRATION_ID']) === null || _a === void 0 ? void 0 : _a.trim();
+    if (orchId) {
+        const sanitizedId = orchId.replace(/[^a-z0-9_.-]/gi, '_');
+        const tag = `actions_orchestration_id/${sanitizedId}`;
+        if (baseUserAgent === null || baseUserAgent === void 0 ? void 0 : baseUserAgent.includes(tag))
+            return baseUserAgent;
+        const ua = baseUserAgent ? `${baseUserAgent} ` : '';
+        return `${ua}${tag}`;
+    }
+    return baseUserAgent;
 }
 
 function getUserAgent() {
@@ -33046,25 +33068,75 @@ const defaults = {
         fetch: getProxyFetch(baseUrl)
     }
 };
-Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
+const GitHub = Octokit.plugin(restEndpointMethods, paginateRest).defaults(defaults);
+/**
+ * Convience function to correctly format Octokit Options to pass into the constructor.
+ *
+ * @param     token    the repo PAT or GITHUB_TOKEN
+ * @param     options  other options to set
+ */
+function getOctokitOptions(token, options) {
+    const opts = Object.assign({}, {}); // Shallow clone - don't mutate the object provided by the caller
+    // Auth
+    const auth = getAuthString(token, opts);
+    if (auth) {
+        opts.auth = auth;
+    }
+    // Orchestration ID
+    const userAgent = getUserAgentWithOrchestrationId(opts.userAgent);
+    if (userAgent) {
+        opts.userAgent = userAgent;
+    }
+    return opts;
+}
 
 const context = new Context();
+/**
+ * Returns a hydrated octokit ready to use for GitHub Actions
+ *
+ * @param     token    the repo PAT or GITHUB_TOKEN
+ * @param     options  other options to set
+ */
+function getOctokit(token, options, ...additionalPlugins) {
+    const GitHubWithPlugins = GitHub.plugin(...additionalPlugins);
+    return new GitHubWithPlugins(getOctokitOptions(token));
+}
 
-try {
-    // `who-to-greet` input defined in action metadata file
-    const nameToGreet = getInput("who-to-greet");
-    info(`Hello ${nameToGreet}!`);
-    // Get the current time and set it as an output variable
-    const time = new Date().toTimeString();
-    setOutput("time", time);
-    // Get the JSON webhook payload for the event that triggered the workflow
-    const payload = JSON.stringify(context.payload, undefined, 2);
-    info(`The event payload: ${payload}`);
+async function run() {
+    const token = getInput("gh-token");
+    const octokit = getOctokit(token);
+    // Get context about the current repository
+    const owner = context.repo.owner;
+    const repo = context.repo.repo;
+    try {
+        const { data: fileData } = await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path: "README.md",
+        });
+        if (!("content" in fileData)) {
+            throw new Error("README.md is not a file or does not exist.");
+        }
+        const currentContent = Buffer.from(fileData.content, "base64").toString("utf-8");
+        info(`Current README length: ${currentContent.length} chars`);
+        const newContent = `${currentContent}\n\n*Updated by GitHub Action on ${new Date().toISOString()}*`;
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo,
+            path: "README.md",
+            message: "chore: update README via Action",
+            content: Buffer.from(newContent).toString("base64"),
+            sha: fileData.sha
+        });
+        info("README.md updated successfully!");
+        const time = new Date().toTimeString();
+        setOutput("time", time);
+    }
+    catch (error) {
+        setFailed(error?.message ?? "Unknown error");
+    }
 }
-catch (error) {
-    let errorMessage = "An unknown error occurred.";
-    if (error instanceof Error)
-        errorMessage = error.message;
-    setFailed(errorMessage);
-}
+run();
+
+export { run };
 //# sourceMappingURL=index.js.map
