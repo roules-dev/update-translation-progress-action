@@ -11,10 +11,16 @@ inputs:
         description: 'The path to the README file to update.'
         required: false
         default: 'README.md'
+    
+    locales-dir:
+        description: 'The directory where locale files are stored.'
+        required: false
+        default: 'locales'
 
-outputs:
-    time: # id of output
-        description: The time we greeted you
+    reference-locale:
+        description: 'The reference locale to compare against (e.g., "en").'
+        required: false
+        default: 'en-US'
 
 runs:
     using: node24

@@ -1,6 +1,6 @@
 import * as os from 'os';
 import os__default, { EOL } from 'os';
-import * as crypto from 'crypto';
+import 'crypto';
 import * as fs from 'fs';
 import { promises, existsSync, readFileSync } from 'fs';
 import 'path';
@@ -25,13 +25,14 @@ import require$$1$2 from 'node:zlib';
 import require$$5$1 from 'node:perf_hooks';
 import require$$8$1 from 'node:util/types';
 import require$$1$1 from 'node:worker_threads';
-import require$$1$3 from 'node:url';
+import require$$1$3, { pathToFileURL } from 'node:url';
 import require$$5$2 from 'node:async_hooks';
 import require$$1$4 from 'node:console';
 import require$$1$5 from 'node:dns';
 import require$$5$3 from 'string_decoder';
 import 'child_process';
 import 'timers';
+import fs$1 from 'fs/promises';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -152,36 +153,6 @@ function escapeProperty(s) {
         .replace(/\n/g, '%0A')
         .replace(/:/g, '%3A')
         .replace(/,/g, '%2C');
-}
-
-// For internal use, subject to change.
-// We use any as a valid input type
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function issueFileCommand(command, message) {
-    const filePath = process.env[`GITHUB_${command}`];
-    if (!filePath) {
-        throw new Error(`Unable to find environment variable for file command ${command}`);
-    }
-    if (!fs.existsSync(filePath)) {
-        throw new Error(`Missing file at path: ${filePath}`);
-    }
-    fs.appendFileSync(filePath, `${toCommandValue(message)}${os.EOL}`, {
-        encoding: 'utf8'
-    });
-}
-function prepareKeyValueMessage(key, value) {
-    const delimiter = `ghadelimiter_${crypto.randomUUID()}`;
-    const convertedValue = toCommandValue(value);
-    // These should realistically never happen, but just in case someone finds a
-    // way to exploit uuid generation let's not allow keys or values that contain
-    // the delimiter.
-    if (key.includes(delimiter)) {
-        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
-    }
-    if (convertedValue.includes(delimiter)) {
-        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
-    }
-    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
 }
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
@@ -23731,11 +23702,11 @@ function requireUtil$2 () {
 	return util$2;
 }
 
-var parse$1;
+var parse$2;
 var hasRequiredParse;
 
 function requireParse () {
-	if (hasRequiredParse) return parse$1;
+	if (hasRequiredParse) return parse$2;
 	hasRequiredParse = 1;
 
 	const { maxNameValuePairSize, maxAttributeValueSize } = requireConstants$1();
@@ -24049,11 +24020,11 @@ function requireParse () {
 	  return parseUnparsedAttributes(unparsedAttributes, cookieAttributeList)
 	}
 
-	parse$1 = {
+	parse$2 = {
 	  parseSetCookie,
 	  parseUnparsedAttributes
 	};
-	return parse$1;
+	return parse$2;
 }
 
 var cookies;
@@ -28111,21 +28082,6 @@ function getInput(name, options) {
     const val = process.env[`INPUT_${name.replace(/ /g, '_').toUpperCase()}`] || '';
     return val.trim();
 }
-/**
- * Sets the value of an output.
- *
- * @param     name     name of the output to set
- * @param     value    value to store. Non-string values will be converted to a string via JSON.stringify
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function setOutput(name, value) {
-    const filePath = process.env['GITHUB_OUTPUT'] || '';
-    if (filePath) {
-        return issueFileCommand('OUTPUT', prepareKeyValueMessage(name, value));
-    }
-    process.stdout.write(os.EOL);
-    issueCommand('set-output', { name }, toCommandValue(value));
-}
 //-----------------------------------------------------------------------
 // Results
 //-----------------------------------------------------------------------
@@ -29278,7 +29234,7 @@ function lowercaseKeys(object) {
 }
 
 // pkg/dist-src/util/is-plain-object.js
-function isPlainObject$1(value) {
+function isPlainObject$2(value) {
   if (typeof value !== "object" || value === null) return false;
   if (Object.prototype.toString.call(value) !== "[object Object]") return false;
   const proto = Object.getPrototypeOf(value);
@@ -29291,7 +29247,7 @@ function isPlainObject$1(value) {
 function mergeDeep(defaults, options) {
   const result = Object.assign({}, defaults);
   Object.keys(options).forEach((key) => {
-    if (isPlainObject$1(options[key])) {
+    if (isPlainObject$2(options[key])) {
       if (!(key in defaults)) Object.assign(result, { [key]: options[key] });
       else result[key] = mergeDeep(defaults[key], options[key]);
     } else {
@@ -29506,7 +29462,7 @@ function expand(template, context) {
 }
 
 // pkg/dist-src/parse.js
-function parse(options) {
+function parse$1(options) {
   let method = options.method.toUpperCase();
   let url = (options.url || "/").replace(/:([a-z]\w+)/g, "{$1}");
   let headers = Object.assign({}, options.headers);
@@ -29572,7 +29528,7 @@ function parse(options) {
 
 // pkg/dist-src/endpoint-with-defaults.js
 function endpointWithDefaults(defaults, route, options) {
-  return parse(merge(defaults, route, options));
+  return parse$1(merge(defaults, route, options));
 }
 
 // pkg/dist-src/with-defaults.js
@@ -29583,7 +29539,7 @@ function withDefaults$2(oldDefaults, newDefaults) {
     DEFAULTS: DEFAULTS2,
     defaults: withDefaults$2.bind(null, DEFAULTS2),
     merge: merge.bind(null, DEFAULTS2),
-    parse
+    parse: parse$1
   });
 }
 
@@ -30028,7 +29984,7 @@ var defaults_default = {
 };
 
 // pkg/dist-src/is-plain-object.js
-function isPlainObject(value) {
+function isPlainObject$1(value) {
   if (typeof value !== "object" || value === null) return false;
   if (Object.prototype.toString.call(value) !== "[object Object]") return false;
   const proto = Object.getPrototypeOf(value);
@@ -30046,7 +30002,7 @@ async function fetchWrapper(requestOptions) {
   }
   const log = requestOptions.request?.log || console;
   const parseSuccessResponseBody = requestOptions.request?.parseSuccessResponseBody !== false;
-  const body = isPlainObject(requestOptions.body) || Array.isArray(requestOptions.body) ? JSONStringify(requestOptions.body) : requestOptions.body;
+  const body = isPlainObject$1(requestOptions.body) || Array.isArray(requestOptions.body) ? JSONStringify(requestOptions.body) : requestOptions.body;
   const requestHeaders = Object.fromEntries(
     Object.entries(requestOptions.headers).map(([name, value]) => [
       name,
@@ -33102,31 +33058,814 @@ function getOctokit(token, options, ...additionalPlugins) {
     return new GitHubWithPlugins(getOctokitOptions(token));
 }
 
+function ok(value) {
+    return [null, value];
+}
+function err(errorOrMessage) {
+    if (typeof errorOrMessage === "string") {
+        return [{ name: "Error", message: errorOrMessage }, null];
+    }
+    if ("message" in errorOrMessage) {
+        return [errorOrMessage, null];
+    }
+    return [{ name: errorOrMessage.name, message: errorOrMessage.name }, null];
+}
+
+var _a;
+function $constructor(name, initializer, params) {
+    function init(inst, def) {
+        if (!inst._zod) {
+            Object.defineProperty(inst, "_zod", {
+                value: {
+                    def,
+                    constr: _,
+                    traits: new Set(),
+                },
+                enumerable: false,
+            });
+        }
+        if (inst._zod.traits.has(name)) {
+            return;
+        }
+        inst._zod.traits.add(name);
+        initializer(inst, def);
+        // support prototype modifications
+        const proto = _.prototype;
+        const keys = Object.keys(proto);
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            if (!(k in inst)) {
+                inst[k] = proto[k].bind(inst);
+            }
+        }
+    }
+    // doesn't work if Parent has a constructor with arguments
+    const Parent = params?.Parent ?? Object;
+    class Definition extends Parent {
+    }
+    Object.defineProperty(Definition, "name", { value: name });
+    function _(def) {
+        var _a;
+        const inst = params?.Parent ? new Definition() : this;
+        init(inst, def);
+        (_a = inst._zod).deferred ?? (_a.deferred = []);
+        for (const fn of inst._zod.deferred) {
+            fn();
+        }
+        return inst;
+    }
+    Object.defineProperty(_, "init", { value: init });
+    Object.defineProperty(_, Symbol.hasInstance, {
+        value: (inst) => {
+            if (params?.Parent && inst instanceof params.Parent)
+                return true;
+            return inst?._zod?.traits?.has(name);
+        },
+    });
+    Object.defineProperty(_, "name", { value: name });
+    return _;
+}
+class $ZodAsyncError extends Error {
+    constructor() {
+        super(`Encountered Promise during synchronous parse. Use .parseAsync() instead.`);
+    }
+}
+(_a = globalThis).__zod_globalConfig ?? (_a.__zod_globalConfig = {});
+const globalConfig = globalThis.__zod_globalConfig;
+function config(newConfig) {
+    return globalConfig;
+}
+
+function jsonStringifyReplacer(_, value) {
+    if (typeof value === "bigint")
+        return value.toString();
+    return value;
+}
+const EVALUATING = /* @__PURE__*/ Symbol("evaluating");
+function defineLazy(object, key, getter) {
+    let value = undefined;
+    Object.defineProperty(object, key, {
+        get() {
+            if (value === EVALUATING) {
+                // Circular reference detected, return undefined to break the cycle
+                return undefined;
+            }
+            if (value === undefined) {
+                value = EVALUATING;
+                value = getter();
+            }
+            return value;
+        },
+        set(v) {
+            Object.defineProperty(object, key, {
+                value: v,
+                // configurable: true,
+            });
+            // object[key] = v;
+        },
+        configurable: true,
+    });
+}
+const captureStackTrace = ("captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => { });
+function isObject(data) {
+    return typeof data === "object" && data !== null && !Array.isArray(data);
+}
+function isPlainObject(o) {
+    if (isObject(o) === false)
+        return false;
+    // modified constructor
+    const ctor = o.constructor;
+    if (ctor === undefined)
+        return true;
+    if (typeof ctor !== "function")
+        return true;
+    // modified prototype
+    const prot = ctor.prototype;
+    if (isObject(prot) === false)
+        return false;
+    // ctor doesn't have static `isPrototypeOf`
+    if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
+        return false;
+    }
+    return true;
+}
+// zod-specific utils
+function clone(inst, def, params) {
+    const cl = new inst._zod.constr(def ?? inst._zod.def);
+    if (!def || params?.parent)
+        cl._zod.parent = inst;
+    return cl;
+}
+function normalizeParams(_params) {
+    const params = _params;
+    if (!params)
+        return {};
+    if (typeof params === "string")
+        return { error: () => params };
+    if (params?.message !== undefined) {
+        if (params?.error !== undefined)
+            throw new Error("Cannot specify both `message` and `error` params");
+        params.error = params.message;
+    }
+    delete params.message;
+    if (typeof params.error === "string")
+        return { ...params, error: () => params.error };
+    return params;
+}
+// invalid_type | too_big | too_small | invalid_format | not_multiple_of | unrecognized_keys | invalid_union | invalid_key | invalid_element | invalid_value | custom
+function aborted(x, startIndex = 0) {
+    if (x.aborted === true)
+        return true;
+    for (let i = startIndex; i < x.issues.length; i++) {
+        if (x.issues[i]?.continue !== true) {
+            return true;
+        }
+    }
+    return false;
+}
+// Checks for explicit abort (continue === false), as opposed to implicit abort (continue === undefined).
+// Used to respect `abort: true` in .refine() even for checks that have a `when` function.
+function explicitlyAborted(x, startIndex = 0) {
+    if (x.aborted === true)
+        return true;
+    for (let i = startIndex; i < x.issues.length; i++) {
+        if (x.issues[i]?.continue === false) {
+            return true;
+        }
+    }
+    return false;
+}
+function prefixIssues(path, issues) {
+    return issues.map((iss) => {
+        var _a;
+        (_a = iss).path ?? (_a.path = []);
+        iss.path.unshift(path);
+        return iss;
+    });
+}
+function unwrapMessage(message) {
+    return typeof message === "string" ? message : message?.message;
+}
+function finalizeIssue(iss, ctx, config) {
+    const message = iss.message
+        ? iss.message
+        : (unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ??
+            unwrapMessage(ctx?.error?.(iss)) ??
+            unwrapMessage(config.customError?.(iss)) ??
+            unwrapMessage(config.localeError?.(iss)) ??
+            "Invalid input");
+    const { inst: _inst, continue: _continue, input: _input, ...rest } = iss;
+    rest.path ?? (rest.path = []);
+    rest.message = message;
+    if (ctx?.reportInput) {
+        rest.input = _input;
+    }
+    return rest;
+}
+
+const initializer = (inst, def) => {
+    inst.name = "$ZodError";
+    Object.defineProperty(inst, "_zod", {
+        value: inst._zod,
+        enumerable: false,
+    });
+    Object.defineProperty(inst, "issues", {
+        value: def,
+        enumerable: false,
+    });
+    inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
+    Object.defineProperty(inst, "toString", {
+        value: () => inst.message,
+        enumerable: false,
+    });
+};
+const $ZodError = $constructor("$ZodError", initializer);
+const $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
+
+const _parse = (_Err) => (schema, value, _ctx, _params) => {
+    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+    const result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise) {
+        throw new $ZodAsyncError();
+    }
+    if (result.issues.length) {
+        const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        captureStackTrace(e, _params?.callee);
+        throw e;
+    }
+    return result.value;
+};
+const parse = /* @__PURE__*/ _parse($ZodRealError);
+const _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
+    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+    let result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise)
+        result = await result;
+    if (result.issues.length) {
+        const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        captureStackTrace(e, params?.callee);
+        throw e;
+    }
+    return result.value;
+};
+const parseAsync = /* @__PURE__*/ _parseAsync($ZodRealError);
+const _safeParse = (_Err) => (schema, value, _ctx) => {
+    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+    const result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise) {
+        throw new $ZodAsyncError();
+    }
+    return result.issues.length
+        ? {
+            success: false,
+            error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
+        }
+        : { success: true, data: result.value };
+};
+const safeParse = /* @__PURE__*/ _safeParse($ZodRealError);
+const _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
+    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+    let result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise)
+        result = await result;
+    return result.issues.length
+        ? {
+            success: false,
+            error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
+        }
+        : { success: true, data: result.value };
+};
+const safeParseAsync = /* @__PURE__*/ _safeParseAsync($ZodRealError);
+
+const string$1 = (params) => {
+    const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
+    return new RegExp(`^${regex}$`);
+};
+const number = /^-?\d+(?:\.\d+)?$/;
+
+const version = {
+    major: 4,
+    minor: 4,
+    patch: 3,
+};
+
+const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
+    var _a;
+    inst ?? (inst = {});
+    inst._zod.def = def; // set _def property
+    inst._zod.bag = inst._zod.bag || {}; // initialize _bag object
+    inst._zod.version = version;
+    const checks = [...(inst._zod.def.checks ?? [])];
+    // if inst is itself a checks.$ZodCheck, run it as a check
+    if (inst._zod.traits.has("$ZodCheck")) {
+        checks.unshift(inst);
+    }
+    for (const ch of checks) {
+        for (const fn of ch._zod.onattach) {
+            fn(inst);
+        }
+    }
+    if (checks.length === 0) {
+        // deferred initializer
+        // inst._zod.parse is not yet defined
+        (_a = inst._zod).deferred ?? (_a.deferred = []);
+        inst._zod.deferred?.push(() => {
+            inst._zod.run = inst._zod.parse;
+        });
+    }
+    else {
+        const runChecks = (payload, checks, ctx) => {
+            let isAborted = aborted(payload);
+            let asyncResult;
+            for (const ch of checks) {
+                if (ch._zod.def.when) {
+                    if (explicitlyAborted(payload))
+                        continue;
+                    const shouldRun = ch._zod.def.when(payload);
+                    if (!shouldRun)
+                        continue;
+                }
+                else if (isAborted) {
+                    continue;
+                }
+                const currLen = payload.issues.length;
+                const _ = ch._zod.check(payload);
+                if (_ instanceof Promise && ctx?.async === false) {
+                    throw new $ZodAsyncError();
+                }
+                if (asyncResult || _ instanceof Promise) {
+                    asyncResult = (asyncResult ?? Promise.resolve()).then(async () => {
+                        await _;
+                        const nextLen = payload.issues.length;
+                        if (nextLen === currLen)
+                            return;
+                        if (!isAborted)
+                            isAborted = aborted(payload, currLen);
+                    });
+                }
+                else {
+                    const nextLen = payload.issues.length;
+                    if (nextLen === currLen)
+                        continue;
+                    if (!isAborted)
+                        isAborted = aborted(payload, currLen);
+                }
+            }
+            if (asyncResult) {
+                return asyncResult.then(() => {
+                    return payload;
+                });
+            }
+            return payload;
+        };
+        const handleCanaryResult = (canary, payload, ctx) => {
+            // abort if the canary is aborted
+            if (aborted(canary)) {
+                canary.aborted = true;
+                return canary;
+            }
+            // run checks first, then
+            const checkResult = runChecks(payload, checks, ctx);
+            if (checkResult instanceof Promise) {
+                if (ctx.async === false)
+                    throw new $ZodAsyncError();
+                return checkResult.then((checkResult) => inst._zod.parse(checkResult, ctx));
+            }
+            return inst._zod.parse(checkResult, ctx);
+        };
+        inst._zod.run = (payload, ctx) => {
+            if (ctx.skipChecks) {
+                return inst._zod.parse(payload, ctx);
+            }
+            if (ctx.direction === "backward") {
+                // run canary
+                // initial pass (no checks)
+                const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
+                if (canary instanceof Promise) {
+                    return canary.then((canary) => {
+                        return handleCanaryResult(canary, payload, ctx);
+                    });
+                }
+                return handleCanaryResult(canary, payload, ctx);
+            }
+            // forward
+            const result = inst._zod.parse(payload, ctx);
+            if (result instanceof Promise) {
+                if (ctx.async === false)
+                    throw new $ZodAsyncError();
+                return result.then((result) => runChecks(result, checks, ctx));
+            }
+            return runChecks(result, checks, ctx);
+        };
+    }
+    // Lazy initialize ~standard to avoid creating objects for every schema
+    defineLazy(inst, "~standard", () => ({
+        validate: (value) => {
+            try {
+                const r = safeParse(inst, value);
+                return r.success ? { value: r.data } : { issues: r.error?.issues };
+            }
+            catch (_) {
+                return safeParseAsync(inst, value).then((r) => (r.success ? { value: r.data } : { issues: r.error?.issues }));
+            }
+        },
+        vendor: "zod",
+        version: 1,
+    }));
+});
+const $ZodString = /*@__PURE__*/ $constructor("$ZodString", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.pattern = [...(inst?._zod.bag?.patterns ?? [])].pop() ?? string$1(inst._zod.bag);
+    inst._zod.parse = (payload, _) => {
+        if (def.coerce)
+            try {
+                payload.value = String(payload.value);
+            }
+            catch (_) { }
+        if (typeof payload.value === "string")
+            return payload;
+        payload.issues.push({
+            expected: "string",
+            code: "invalid_type",
+            input: payload.value,
+            inst,
+        });
+        return payload;
+    };
+});
+const $ZodUnknown = /*@__PURE__*/ $constructor("$ZodUnknown", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.parse = (payload) => payload;
+});
+const $ZodRecord = /*@__PURE__*/ $constructor("$ZodRecord", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.parse = (payload, ctx) => {
+        const input = payload.value;
+        if (!isPlainObject(input)) {
+            payload.issues.push({
+                expected: "record",
+                code: "invalid_type",
+                input,
+                inst,
+            });
+            return payload;
+        }
+        const proms = [];
+        const values = def.keyType._zod.values;
+        if (values) {
+            payload.value = {};
+            const recordKeys = new Set();
+            for (const key of values) {
+                if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
+                    recordKeys.add(typeof key === "number" ? key.toString() : key);
+                    const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+                    if (keyResult instanceof Promise) {
+                        throw new Error("Async schemas not supported in object keys currently");
+                    }
+                    if (keyResult.issues.length) {
+                        payload.issues.push({
+                            code: "invalid_key",
+                            origin: "record",
+                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+                            input: key,
+                            path: [key],
+                            inst,
+                        });
+                        continue;
+                    }
+                    const outKey = keyResult.value;
+                    const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+                    if (result instanceof Promise) {
+                        proms.push(result.then((result) => {
+                            if (result.issues.length) {
+                                payload.issues.push(...prefixIssues(key, result.issues));
+                            }
+                            payload.value[outKey] = result.value;
+                        }));
+                    }
+                    else {
+                        if (result.issues.length) {
+                            payload.issues.push(...prefixIssues(key, result.issues));
+                        }
+                        payload.value[outKey] = result.value;
+                    }
+                }
+            }
+            let unrecognized;
+            for (const key in input) {
+                if (!recordKeys.has(key)) {
+                    unrecognized = unrecognized ?? [];
+                    unrecognized.push(key);
+                }
+            }
+            if (unrecognized && unrecognized.length > 0) {
+                payload.issues.push({
+                    code: "unrecognized_keys",
+                    input,
+                    inst,
+                    keys: unrecognized,
+                });
+            }
+        }
+        else {
+            payload.value = {};
+            // Reflect.ownKeys for Symbol-key support; filter non-enumerable to match z.object()
+            for (const key of Reflect.ownKeys(input)) {
+                if (key === "__proto__")
+                    continue;
+                if (!Object.prototype.propertyIsEnumerable.call(input, key))
+                    continue;
+                let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+                if (keyResult instanceof Promise) {
+                    throw new Error("Async schemas not supported in object keys currently");
+                }
+                // Numeric string fallback: if key is a numeric string and failed, retry with Number(key)
+                // This handles z.number(), z.literal([1, 2, 3]), and unions containing numeric literals
+                const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
+                if (checkNumericKey) {
+                    const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+                    if (retryResult instanceof Promise) {
+                        throw new Error("Async schemas not supported in object keys currently");
+                    }
+                    if (retryResult.issues.length === 0) {
+                        keyResult = retryResult;
+                    }
+                }
+                if (keyResult.issues.length) {
+                    if (def.mode === "loose") {
+                        // Pass through unchanged
+                        payload.value[key] = input[key];
+                    }
+                    else {
+                        // Default "strict" behavior: error on invalid key
+                        payload.issues.push({
+                            code: "invalid_key",
+                            origin: "record",
+                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+                            input: key,
+                            path: [key],
+                            inst,
+                        });
+                    }
+                    continue;
+                }
+                const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+                if (result instanceof Promise) {
+                    proms.push(result.then((result) => {
+                        if (result.issues.length) {
+                            payload.issues.push(...prefixIssues(key, result.issues));
+                        }
+                        payload.value[keyResult.value] = result.value;
+                    }));
+                }
+                else {
+                    if (result.issues.length) {
+                        payload.issues.push(...prefixIssues(key, result.issues));
+                    }
+                    payload.value[keyResult.value] = result.value;
+                }
+            }
+        }
+        if (proms.length) {
+            return Promise.all(proms).then(() => payload);
+        }
+        return payload;
+    };
+});
+
+// @__NO_SIDE_EFFECTS__
+function _string(Class, params) {
+    return new Class({
+        type: "string",
+        ...normalizeParams(params),
+    });
+}
+// @__NO_SIDE_EFFECTS__
+function _unknown(Class) {
+    return new Class({
+        type: "unknown",
+    });
+}
+
+const ZodMiniType = /*@__PURE__*/ $constructor("ZodMiniType", (inst, def) => {
+    if (!inst._zod)
+        throw new Error("Uninitialized schema in ZodMiniType.");
+    $ZodType.init(inst, def);
+    inst.def = def;
+    inst.type = def.type;
+    inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
+    inst.safeParse = (data, params) => safeParse(inst, data, params);
+    inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
+    inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
+    inst.check = (...checks) => {
+        return inst.clone({
+            ...def,
+            checks: [
+                ...(def.checks ?? []),
+                ...checks.map((ch) => typeof ch === "function"
+                    ? {
+                        _zod: { check: ch, def: { check: "custom" }, onattach: [] },
+                    }
+                    : ch),
+            ],
+        }, { parent: true });
+    };
+    inst.with = inst.check;
+    inst.clone = (_def, params) => clone(inst, _def, params);
+    inst.brand = () => inst;
+    inst.register = ((reg, meta) => {
+        reg.add(inst, meta);
+        return inst;
+    });
+    inst.apply = (fn) => fn(inst);
+});
+const ZodMiniString = /*@__PURE__*/ $constructor("ZodMiniString", (inst, def) => {
+    $ZodString.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function string(params) {
+    return _string(ZodMiniString, params);
+}
+const ZodMiniUnknown = /*@__PURE__*/ $constructor("ZodMiniUnknown", (inst, def) => {
+    $ZodUnknown.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function unknown() {
+    return _unknown(ZodMiniUnknown);
+}
+const ZodMiniRecord = /*@__PURE__*/ $constructor("ZodMiniRecord", (inst, def) => {
+    $ZodRecord.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function record(keyType, valueType, params) {
+    // v3-compat: z.record(valueType, params?) — defaults keyType to z.string()
+    if (!valueType || !valueType._zod) {
+        return new ZodMiniRecord({
+            type: "record",
+            keyType: string(),
+            valueType: keyType,
+            ...normalizeParams(valueType),
+        });
+    }
+    return new ZodMiniRecord({
+        type: "record",
+        keyType,
+        valueType: valueType,
+        ...normalizeParams(params),
+    });
+}
+
+function isRecord(val) {
+    const schema = record(string(), unknown());
+    const res = schema.safeParse(val);
+    return res.success;
+}
+function sameStructure(a, b) {
+    let testedValidKeysCount = 0;
+    function sameStructureRec(ref, tested, path = []) {
+        if (typeof ref === "string" && typeof tested === "string") {
+            testedValidKeysCount += 1;
+            return;
+        }
+        if (!isRecord(ref) || !isRecord(tested))
+            return;
+        for (const key in ref) {
+            if (!Object.prototype.hasOwnProperty.call(tested, key)) {
+                continue;
+            }
+            sameStructureRec(ref[key], tested[key], [...path, key]);
+        }
+        return;
+    }
+    sameStructureRec(a, b, []);
+    return testedValidKeysCount;
+}
+async function loadLocaleFile(localesPath, localeCode) {
+    try {
+        const locale = (await import(pathToFileURL(`${localesPath}/${localeCode}.json`).href, { assert: { type: 'json' } })).default;
+        if (typeof locale !== "object")
+            return undefined;
+        if (!locale)
+            return undefined;
+        return locale;
+    }
+    catch {
+        return undefined;
+    }
+}
+async function countTotalKeys(locale) {
+    let count = 0;
+    function countRec(obj) {
+        for (const key in obj) {
+            if (typeof obj[key] === "string") {
+                count += 1;
+            }
+            else if (isRecord(obj[key])) {
+                countRec(obj[key]);
+            }
+        }
+    }
+    countRec(locale);
+    return count;
+}
+async function verifyTranslation(localesPath, localeCode, defaultLocaleCode = "en-US") {
+    if (!localeCode) {
+        console.error("Please provide a locale code as an argument.");
+        process.exit(1);
+    }
+    const defaultLocale = await loadLocaleFile(localesPath, defaultLocaleCode);
+    if (!defaultLocale) {
+        return err("Default locale file not found or invalid.");
+    }
+    const locale = await loadLocaleFile(localesPath, localeCode);
+    if (!locale) {
+        return err("Locale file not found or invalid.");
+    }
+    const refKeysCount = await countTotalKeys(defaultLocale);
+    const testedValidKeysCount = sameStructure(defaultLocale, locale);
+    return ok({
+        ref: refKeysCount,
+        tested: testedValidKeysCount,
+    });
+}
+
+async function getAllLocalesCodes(localesPath) {
+    const files = await fs$1.readdir(localesPath);
+    return files
+        .filter((file) => file.endsWith(".json"))
+        .map((file) => file.replace(".json", ""));
+}
+async function getTranslationProgress(localesPath, localeCode, defaultLocaleCode = "en-US") {
+    const [error, result] = await verifyTranslation(localesPath, localeCode, defaultLocaleCode);
+    if (error) {
+        return null;
+    }
+    const { ref, tested } = result;
+    return Math.round((tested / ref) * 100);
+}
+
+async function readRepoReadme(octokit, repo, path) {
+    const { data: fileData } = await octokit.rest.repos.getContent({
+        ...repo,
+        path: path,
+    });
+    if (!("content" in fileData)) {
+        return err(Error("README.md is not a file or does not exist."));
+    }
+    const currentContent = Buffer.from(fileData.content, "base64").toString("utf-8");
+    return ok({ fileData, currentContent });
+}
+async function writeRepoReadme(octokit, repo, path, content, sha) {
+    try {
+        const response = await octokit.rest.repos.createOrUpdateFileContents({
+            ...repo,
+            path: path,
+            message: "chore: update README via Action",
+            content: Buffer.from(content).toString("base64"),
+            sha: sha
+        });
+        return ok(response);
+    }
+    catch (error) {
+        return err(error instanceof Error ? error : new Error("Unknown error"));
+    }
+}
+async function getTranslationProgressTable(localesPath, defaultLocaleCode = "en-US") {
+    const strings = [];
+    const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+    for (const code of await getAllLocalesCodes(localesPath)) {
+        if (code === defaultLocaleCode)
+            continue;
+        const simplifiedCode = code.split("-")[0];
+        const progress = await getTranslationProgress(localesPath, code, defaultLocaleCode);
+        strings.push(`${displayNames.of(simplifiedCode)} (${code}): ${progress}%`);
+    }
+    if (strings.length === 0) {
+        return "No translations found.";
+    }
+    return strings.join("; ");
+}
 async function run() {
     const token = getInput("gh-token");
     const octokit = getOctokit(token);
     const readmePath = getInput("readme-path") || "README.md";
+    const localesPath = getInput("locales-dir") || "locales";
+    const defaultLocaleCode = getInput("default-locale") || "en-US";
     try {
-        const { data: fileData } = await octokit.rest.repos.getContent({
-            ...context.repo,
-            path: readmePath,
-        });
-        if (!("content" in fileData)) {
-            throw new Error("README.md is not a file or does not exist.");
-        }
-        const currentContent = Buffer.from(fileData.content, "base64").toString("utf-8");
+        const [readError, result] = await readRepoReadme(octokit, context.repo, readmePath);
+        if (readError)
+            throw readError;
+        const { fileData, currentContent } = result;
         info(`Current README length: ${currentContent.length} chars`);
-        const newContent = `${currentContent}\n\n*Updated by GitHub Action on ${new Date().toISOString()}*`;
-        await octokit.rest.repos.createOrUpdateFileContents({
-            ...context.repo,
-            path: readmePath,
-            message: "chore: update README via Action",
-            content: Buffer.from(newContent).toString("base64"),
-            sha: fileData.sha
-        });
+        const translationProgressTable = await getTranslationProgressTable(localesPath, defaultLocaleCode);
+        const newContent = `${currentContent}\n\nTranslations progress at ${new Date().toISOString()}:\n${translationProgressTable}`;
+        const [writeError, _] = await writeRepoReadme(octokit, context.repo, readmePath, newContent, fileData.sha);
+        if (writeError)
+            throw writeError;
         info("README.md updated successfully!");
-        const time = new Date().toTimeString();
-        setOutput("time", time);
     }
     catch (error) {
         setFailed(error?.message ?? "Unknown error");

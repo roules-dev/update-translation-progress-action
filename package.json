@@ -1,33 +1,36 @@
 {
-  "name": "update-translation-progress-action",
-  "version": "1.0.0",
-  "description": "runs a script that reads locales files and updates the translation progress in the readme",
-  "main": "index.js",
-  "scripts": {
-    "build": "tsc && rollup --config rollup.config.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/roules-dev/update-translation-progress-action.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
-  "bugs": {
-    "url": "https://github.com/roules-dev/update-translation-progress-action/issues"
-  },
-  "homepage": "https://github.com/roules-dev/update-translation-progress-action#readme",
-  "dependencies": {
-    "@actions/core": "^3.0.1",
-    "@actions/github": "^9.1.1",
-    "@types/node": "^25.6.0",
-    "typescript": "^6.0.3"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^29.0.2",
-    "@rollup/plugin-node-resolve": "^16.0.3",
-    "rollup": "^4.60.3"
-  }
+    "name": "update-translation-progress-action",
+    "version": "1.0.0",
+    "description": "runs a script that reads locales files and updates the translation progress in the readme",
+    "main": "index.js",
+    "scripts": {
+        "build": "tsc && rollup --config rollup.config.js",
+        "scratch": "npx tsx src/scratch.ts",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/roules-dev/update-translation-progress-action.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/roules-dev/update-translation-progress-action/issues"
+    },
+    "homepage": "https://github.com/roules-dev/update-translation-progress-action#readme",
+    "dependencies": {
+        "@actions/core": "^3.0.1",
+        "@actions/github": "^9.1.1",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^29.0.2",
+        "@rollup/plugin-node-resolve": "^16.0.3",
+        "@types/node": "^25.6.0",
+        "rollup": "^4.60.3",
+        "tsx": "^4.21.0",
+        "typescript": "^6.0.3"
+    }
 }
