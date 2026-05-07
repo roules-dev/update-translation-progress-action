@@ -1,7 +1,9 @@
-import * as core from "@actions/core"
-import * as github from "@actions/github"
+import * as core from "@actions/core";
+import * as github from "@actions/github";
+import { fileURLToPath } from "url";
 import { err, ok } from "./lib/error-handling.js";
 import { getAllLocalesCodes, getTranslationProgress } from "./tools/gather-translations-info.js";
+import { localeToFlag } from "./lib/locale-to-flag.js";
 
 async function readRepoReadme(
     octokit: ReturnType<typeof github.getOctokit>, 
@@ -32,7 +34,7 @@ async function writeRepoReadme(
         const response = await octokit.rest.repos.createOrUpdateFileContents({
             ...repo,
             path: path,
-            message: "chore: update README via Action",
+            message: "[chore]: update translation progress via action",
             content: Buffer.from(content).toString("base64"),
             sha: sha
         })
@@ -44,18 +46,24 @@ async function writeRepoReadme(
     }
 }
 
-async function getTranslationProgressTable(localesPath: string, defaultLocaleCode = "en-US") {
+const displayNames = new Intl.DisplayNames(['en'], { type: 'language' })
+export async function getTranslationProgressTable(localesPath: string, defaultLocaleCode = "en-US") {
     const strings = []
+    const codes = await getAllLocalesCodes(localesPath)
 
-    const displayNames = new Intl.DisplayNames(['en'], { type: 'language' })
+    if (codes.length === 0) return "No translations found."
+    if (!codes.includes(defaultLocaleCode)) {
+        return `Default locale (${defaultLocaleCode}) not found.`
+    }
 
-    for (const code of await getAllLocalesCodes(localesPath)) {
+    for (const code of codes) {
         if (code === defaultLocaleCode) continue
 
         const simplifiedCode = code.split("-")[0]!
 
         const progress = await getTranslationProgress(localesPath, code, defaultLocaleCode)
-        strings.push(`${displayNames.of(simplifiedCode)} (${code}): ${progress}%`)
+        const flag = localeToFlag(code)
+        strings.push(`${flag ? `${flag} ` : ""}${displayNames.of(simplifiedCode)} (${code}): ${progress}%`)
     }
 
     if (strings.length === 0) {
@@ -96,4 +104,6 @@ export async function run() {
     }
 }
 
-run()
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    run()
+}
