@@ -2,6 +2,10 @@ import fs from "fs/promises"
 import { verifyTranslation } from "./verify-translation.js"
 
 export async function getAllLocalesCodes(localesPath: string) {
+    if (!await fs.stat(localesPath).then(stat => stat.isDirectory()).catch(() => false)) {
+        return []
+    }
+    
     const files = await fs.readdir(localesPath)
     return files
         .filter((file) => file.endsWith(".json"))

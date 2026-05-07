@@ -33793,6 +33793,9 @@ async function verifyTranslation(localesPath, localeCode, defaultLocaleCode = "e
 }
 
 async function getAllLocalesCodes(localesPath) {
+    if (!await fs$1.stat(localesPath).then(stat => stat.isDirectory()).catch(() => false)) {
+        return [];
+    }
     const files = await fs$1.readdir(localesPath);
     return files
         .filter((file) => file.endsWith(".json"))
