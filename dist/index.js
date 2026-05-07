@@ -33105,14 +33105,11 @@ function getOctokit(token, options, ...additionalPlugins) {
 async function run() {
     const token = getInput("gh-token");
     const octokit = getOctokit(token);
-    // Get context about the current repository
-    const owner = context.repo.owner;
-    const repo = context.repo.repo;
+    const readmePath = getInput("readme-path") || "README.md";
     try {
         const { data: fileData } = await octokit.rest.repos.getContent({
-            owner,
-            repo,
-            path: "README.md",
+            ...context.repo,
+            path: readmePath,
         });
         if (!("content" in fileData)) {
             throw new Error("README.md is not a file or does not exist.");
@@ -33121,9 +33118,8 @@ async function run() {
         info(`Current README length: ${currentContent.length} chars`);
         const newContent = `${currentContent}\n\n*Updated by GitHub Action on ${new Date().toISOString()}*`;
         await octokit.rest.repos.createOrUpdateFileContents({
-            owner,
-            repo,
-            path: "README.md",
+            ...context.repo,
+            path: readmePath,
             message: "chore: update README via Action",
             content: Buffer.from(newContent).toString("base64"),
             sha: fileData.sha

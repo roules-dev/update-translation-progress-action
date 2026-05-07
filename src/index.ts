@@ -5,15 +5,12 @@ export async function run() {
     const token = core.getInput("gh-token")
     const octokit = github.getOctokit(token)
 
-    // Get context about the current repository
-    const owner = github.context.repo.owner
-    const repo = github.context.repo.repo
+    const readmePath = core.getInput("readme-path") || "README.md"
 
     try {
         const { data: fileData } = await octokit.rest.repos.getContent({
-            owner,
-            repo,
-            path: "README.md",
+            ...github.context.repo,
+            path: readmePath,
         })
 
         if (!("content" in fileData)) {
@@ -27,9 +24,8 @@ export async function run() {
 
 
         await octokit.rest.repos.createOrUpdateFileContents({
-            owner,
-            repo,
-            path: "README.md",
+            ...github.context.repo,
+            path: readmePath,
             message: "chore: update README via Action",
             content: Buffer.from(newContent).toString("base64"),
             sha: fileData.sha
@@ -39,7 +35,7 @@ export async function run() {
 
         const time = new Date().toTimeString()
         core.setOutput("time", time)
-        
+
     } catch (error) {
         core.setFailed((error as Error)?.message ?? "Unknown error")
     }

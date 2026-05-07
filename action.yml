@@ -3,14 +3,19 @@ description: Displays the translation progress for each language in the reposito
 author: Roules
 
 inputs:
-  gh-token:
-    description: 'The GitHub token for authentication.'
-    required: true
+    gh-token:
+        description: 'The GitHub token for authentication.'
+        required: true
+    
+    readme-path:
+        description: 'The path to the README file to update.'
+        required: false
+        default: 'README.md'
 
 outputs:
-  time: # id of output
-    description: The time we greeted you
+    time: # id of output
+        description: The time we greeted you
 
 runs:
-  using: node24
-  main: dist/index.js
+    using: node24
+    main: dist/index.js
