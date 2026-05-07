@@ -1,21 +1,48 @@
 import * as core from "@actions/core"
 import * as github from "@actions/github"
 
-try {
-    // `who-to-greet` input defined in action metadata file
-    const nameToGreet = core.getInput("who-to-greet")
-    core.info(`Hello ${nameToGreet}!`)
+export async function run() {
+    const token = core.getInput("gh-token")
+    const octokit = github.getOctokit(token)
 
-    // Get the current time and set it as an output variable
-    const time = new Date().toTimeString()
-    core.setOutput("time", time)
+    // Get context about the current repository
+    const owner = github.context.repo.owner
+    const repo = github.context.repo.repo
 
-    // Get the JSON webhook payload for the event that triggered the workflow
-    const payload = JSON.stringify(github.context.payload, undefined, 2)
-    core.info(`The event payload: ${payload}`)
-    
-} catch (error) {
-    let errorMessage = "An unknown error occurred."
-    if (error instanceof Error) errorMessage = error.message
-    core.setFailed(errorMessage)
+    try {
+        const { data: fileData } = await octokit.rest.repos.getContent({
+            owner,
+            repo,
+            path: "README.md",
+        })
+
+        if (!("content" in fileData)) {
+            throw new Error("README.md is not a file or does not exist.")
+        }
+
+        const currentContent = Buffer.from(fileData.content, "base64").toString("utf-8")
+        core.info(`Current README length: ${currentContent.length} chars`)
+
+        const newContent = `${currentContent}\n\n*Updated by GitHub Action on ${new Date().toISOString()}*`
+
+
+        await octokit.rest.repos.createOrUpdateFileContents({
+            owner,
+            repo,
+            path: "README.md",
+            message: "chore: update README via Action",
+            content: Buffer.from(newContent).toString("base64"),
+            sha: fileData.sha
+        })
+
+        core.info("README.md updated successfully!")
+
+        const time = new Date().toTimeString()
+        core.setOutput("time", time)
+        
+    } catch (error) {
+        core.setFailed((error as Error)?.message ?? "Unknown error")
+    }
 }
+
+run()

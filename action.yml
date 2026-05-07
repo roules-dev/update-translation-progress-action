@@ -1,11 +1,11 @@
 name: Update Translation Progress
 description: Displays the translation progress for each language in the repository readme.
+author: Roules
 
 inputs:
-  who-to-greet: # id of input
-    description: Who to greet
+  gh-token:
+    description: 'The GitHub token for authentication.'
     required: true
-    default: World
 
 outputs:
   time: # id of output
