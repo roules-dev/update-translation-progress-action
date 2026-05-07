@@ -25,7 +25,7 @@ import require$$1$2 from 'node:zlib';
 import require$$5$1 from 'node:perf_hooks';
 import require$$8$1 from 'node:util/types';
 import require$$1$1 from 'node:worker_threads';
-import require$$1$3, { pathToFileURL } from 'node:url';
+import require$$1$3 from 'node:url';
 import require$$5$2 from 'node:async_hooks';
 import require$$1$4 from 'node:console';
 import require$$1$5 from 'node:dns';
@@ -33,7 +33,6 @@ import require$$5$3 from 'string_decoder';
 import 'child_process';
 import 'timers';
 import { fileURLToPath } from 'url';
-import fs$1 from 'fs/promises';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -33072,745 +33071,6 @@ function err(errorOrMessage) {
     return [{ name: errorOrMessage.name, message: errorOrMessage.name }, null];
 }
 
-var _a;
-function $constructor(name, initializer, params) {
-    function init(inst, def) {
-        if (!inst._zod) {
-            Object.defineProperty(inst, "_zod", {
-                value: {
-                    def,
-                    constr: _,
-                    traits: new Set(),
-                },
-                enumerable: false,
-            });
-        }
-        if (inst._zod.traits.has(name)) {
-            return;
-        }
-        inst._zod.traits.add(name);
-        initializer(inst, def);
-        // support prototype modifications
-        const proto = _.prototype;
-        const keys = Object.keys(proto);
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
-            if (!(k in inst)) {
-                inst[k] = proto[k].bind(inst);
-            }
-        }
-    }
-    // doesn't work if Parent has a constructor with arguments
-    const Parent = params?.Parent ?? Object;
-    class Definition extends Parent {
-    }
-    Object.defineProperty(Definition, "name", { value: name });
-    function _(def) {
-        var _a;
-        const inst = params?.Parent ? new Definition() : this;
-        init(inst, def);
-        (_a = inst._zod).deferred ?? (_a.deferred = []);
-        for (const fn of inst._zod.deferred) {
-            fn();
-        }
-        return inst;
-    }
-    Object.defineProperty(_, "init", { value: init });
-    Object.defineProperty(_, Symbol.hasInstance, {
-        value: (inst) => {
-            if (params?.Parent && inst instanceof params.Parent)
-                return true;
-            return inst?._zod?.traits?.has(name);
-        },
-    });
-    Object.defineProperty(_, "name", { value: name });
-    return _;
-}
-class $ZodAsyncError extends Error {
-    constructor() {
-        super(`Encountered Promise during synchronous parse. Use .parseAsync() instead.`);
-    }
-}
-(_a = globalThis).__zod_globalConfig ?? (_a.__zod_globalConfig = {});
-const globalConfig = globalThis.__zod_globalConfig;
-function config(newConfig) {
-    return globalConfig;
-}
-
-function jsonStringifyReplacer(_, value) {
-    if (typeof value === "bigint")
-        return value.toString();
-    return value;
-}
-const EVALUATING = /* @__PURE__*/ Symbol("evaluating");
-function defineLazy(object, key, getter) {
-    let value = undefined;
-    Object.defineProperty(object, key, {
-        get() {
-            if (value === EVALUATING) {
-                // Circular reference detected, return undefined to break the cycle
-                return undefined;
-            }
-            if (value === undefined) {
-                value = EVALUATING;
-                value = getter();
-            }
-            return value;
-        },
-        set(v) {
-            Object.defineProperty(object, key, {
-                value: v,
-                // configurable: true,
-            });
-            // object[key] = v;
-        },
-        configurable: true,
-    });
-}
-const captureStackTrace = ("captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => { });
-function isObject(data) {
-    return typeof data === "object" && data !== null && !Array.isArray(data);
-}
-function isPlainObject(o) {
-    if (isObject(o) === false)
-        return false;
-    // modified constructor
-    const ctor = o.constructor;
-    if (ctor === undefined)
-        return true;
-    if (typeof ctor !== "function")
-        return true;
-    // modified prototype
-    const prot = ctor.prototype;
-    if (isObject(prot) === false)
-        return false;
-    // ctor doesn't have static `isPrototypeOf`
-    if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
-        return false;
-    }
-    return true;
-}
-// zod-specific utils
-function clone(inst, def, params) {
-    const cl = new inst._zod.constr(def ?? inst._zod.def);
-    if (!def || params?.parent)
-        cl._zod.parent = inst;
-    return cl;
-}
-function normalizeParams(_params) {
-    const params = _params;
-    if (!params)
-        return {};
-    if (typeof params === "string")
-        return { error: () => params };
-    if (params?.message !== undefined) {
-        if (params?.error !== undefined)
-            throw new Error("Cannot specify both `message` and `error` params");
-        params.error = params.message;
-    }
-    delete params.message;
-    if (typeof params.error === "string")
-        return { ...params, error: () => params.error };
-    return params;
-}
-// invalid_type | too_big | too_small | invalid_format | not_multiple_of | unrecognized_keys | invalid_union | invalid_key | invalid_element | invalid_value | custom
-function aborted(x, startIndex = 0) {
-    if (x.aborted === true)
-        return true;
-    for (let i = startIndex; i < x.issues.length; i++) {
-        if (x.issues[i]?.continue !== true) {
-            return true;
-        }
-    }
-    return false;
-}
-// Checks for explicit abort (continue === false), as opposed to implicit abort (continue === undefined).
-// Used to respect `abort: true` in .refine() even for checks that have a `when` function.
-function explicitlyAborted(x, startIndex = 0) {
-    if (x.aborted === true)
-        return true;
-    for (let i = startIndex; i < x.issues.length; i++) {
-        if (x.issues[i]?.continue === false) {
-            return true;
-        }
-    }
-    return false;
-}
-function prefixIssues(path, issues) {
-    return issues.map((iss) => {
-        var _a;
-        (_a = iss).path ?? (_a.path = []);
-        iss.path.unshift(path);
-        return iss;
-    });
-}
-function unwrapMessage(message) {
-    return typeof message === "string" ? message : message?.message;
-}
-function finalizeIssue(iss, ctx, config) {
-    const message = iss.message
-        ? iss.message
-        : (unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ??
-            unwrapMessage(ctx?.error?.(iss)) ??
-            unwrapMessage(config.customError?.(iss)) ??
-            unwrapMessage(config.localeError?.(iss)) ??
-            "Invalid input");
-    const { inst: _inst, continue: _continue, input: _input, ...rest } = iss;
-    rest.path ?? (rest.path = []);
-    rest.message = message;
-    if (ctx?.reportInput) {
-        rest.input = _input;
-    }
-    return rest;
-}
-
-const initializer = (inst, def) => {
-    inst.name = "$ZodError";
-    Object.defineProperty(inst, "_zod", {
-        value: inst._zod,
-        enumerable: false,
-    });
-    Object.defineProperty(inst, "issues", {
-        value: def,
-        enumerable: false,
-    });
-    inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
-    Object.defineProperty(inst, "toString", {
-        value: () => inst.message,
-        enumerable: false,
-    });
-};
-const $ZodError = $constructor("$ZodError", initializer);
-const $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
-
-const _parse = (_Err) => (schema, value, _ctx, _params) => {
-    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-    const result = schema._zod.run({ value, issues: [] }, ctx);
-    if (result instanceof Promise) {
-        throw new $ZodAsyncError();
-    }
-    if (result.issues.length) {
-        const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
-        captureStackTrace(e, _params?.callee);
-        throw e;
-    }
-    return result.value;
-};
-const parse = /* @__PURE__*/ _parse($ZodRealError);
-const _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
-    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
-    let result = schema._zod.run({ value, issues: [] }, ctx);
-    if (result instanceof Promise)
-        result = await result;
-    if (result.issues.length) {
-        const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
-        captureStackTrace(e, params?.callee);
-        throw e;
-    }
-    return result.value;
-};
-const parseAsync = /* @__PURE__*/ _parseAsync($ZodRealError);
-const _safeParse = (_Err) => (schema, value, _ctx) => {
-    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
-    const result = schema._zod.run({ value, issues: [] }, ctx);
-    if (result instanceof Promise) {
-        throw new $ZodAsyncError();
-    }
-    return result.issues.length
-        ? {
-            success: false,
-            error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
-        }
-        : { success: true, data: result.value };
-};
-const safeParse = /* @__PURE__*/ _safeParse($ZodRealError);
-const _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
-    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
-    let result = schema._zod.run({ value, issues: [] }, ctx);
-    if (result instanceof Promise)
-        result = await result;
-    return result.issues.length
-        ? {
-            success: false,
-            error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
-        }
-        : { success: true, data: result.value };
-};
-const safeParseAsync = /* @__PURE__*/ _safeParseAsync($ZodRealError);
-
-const string$1 = (params) => {
-    const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
-    return new RegExp(`^${regex}$`);
-};
-const number = /^-?\d+(?:\.\d+)?$/;
-
-const version = {
-    major: 4,
-    minor: 4,
-    patch: 3,
-};
-
-const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
-    var _a;
-    inst ?? (inst = {});
-    inst._zod.def = def; // set _def property
-    inst._zod.bag = inst._zod.bag || {}; // initialize _bag object
-    inst._zod.version = version;
-    const checks = [...(inst._zod.def.checks ?? [])];
-    // if inst is itself a checks.$ZodCheck, run it as a check
-    if (inst._zod.traits.has("$ZodCheck")) {
-        checks.unshift(inst);
-    }
-    for (const ch of checks) {
-        for (const fn of ch._zod.onattach) {
-            fn(inst);
-        }
-    }
-    if (checks.length === 0) {
-        // deferred initializer
-        // inst._zod.parse is not yet defined
-        (_a = inst._zod).deferred ?? (_a.deferred = []);
-        inst._zod.deferred?.push(() => {
-            inst._zod.run = inst._zod.parse;
-        });
-    }
-    else {
-        const runChecks = (payload, checks, ctx) => {
-            let isAborted = aborted(payload);
-            let asyncResult;
-            for (const ch of checks) {
-                if (ch._zod.def.when) {
-                    if (explicitlyAborted(payload))
-                        continue;
-                    const shouldRun = ch._zod.def.when(payload);
-                    if (!shouldRun)
-                        continue;
-                }
-                else if (isAborted) {
-                    continue;
-                }
-                const currLen = payload.issues.length;
-                const _ = ch._zod.check(payload);
-                if (_ instanceof Promise && ctx?.async === false) {
-                    throw new $ZodAsyncError();
-                }
-                if (asyncResult || _ instanceof Promise) {
-                    asyncResult = (asyncResult ?? Promise.resolve()).then(async () => {
-                        await _;
-                        const nextLen = payload.issues.length;
-                        if (nextLen === currLen)
-                            return;
-                        if (!isAborted)
-                            isAborted = aborted(payload, currLen);
-                    });
-                }
-                else {
-                    const nextLen = payload.issues.length;
-                    if (nextLen === currLen)
-                        continue;
-                    if (!isAborted)
-                        isAborted = aborted(payload, currLen);
-                }
-            }
-            if (asyncResult) {
-                return asyncResult.then(() => {
-                    return payload;
-                });
-            }
-            return payload;
-        };
-        const handleCanaryResult = (canary, payload, ctx) => {
-            // abort if the canary is aborted
-            if (aborted(canary)) {
-                canary.aborted = true;
-                return canary;
-            }
-            // run checks first, then
-            const checkResult = runChecks(payload, checks, ctx);
-            if (checkResult instanceof Promise) {
-                if (ctx.async === false)
-                    throw new $ZodAsyncError();
-                return checkResult.then((checkResult) => inst._zod.parse(checkResult, ctx));
-            }
-            return inst._zod.parse(checkResult, ctx);
-        };
-        inst._zod.run = (payload, ctx) => {
-            if (ctx.skipChecks) {
-                return inst._zod.parse(payload, ctx);
-            }
-            if (ctx.direction === "backward") {
-                // run canary
-                // initial pass (no checks)
-                const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
-                if (canary instanceof Promise) {
-                    return canary.then((canary) => {
-                        return handleCanaryResult(canary, payload, ctx);
-                    });
-                }
-                return handleCanaryResult(canary, payload, ctx);
-            }
-            // forward
-            const result = inst._zod.parse(payload, ctx);
-            if (result instanceof Promise) {
-                if (ctx.async === false)
-                    throw new $ZodAsyncError();
-                return result.then((result) => runChecks(result, checks, ctx));
-            }
-            return runChecks(result, checks, ctx);
-        };
-    }
-    // Lazy initialize ~standard to avoid creating objects for every schema
-    defineLazy(inst, "~standard", () => ({
-        validate: (value) => {
-            try {
-                const r = safeParse(inst, value);
-                return r.success ? { value: r.data } : { issues: r.error?.issues };
-            }
-            catch (_) {
-                return safeParseAsync(inst, value).then((r) => (r.success ? { value: r.data } : { issues: r.error?.issues }));
-            }
-        },
-        vendor: "zod",
-        version: 1,
-    }));
-});
-const $ZodString = /*@__PURE__*/ $constructor("$ZodString", (inst, def) => {
-    $ZodType.init(inst, def);
-    inst._zod.pattern = [...(inst?._zod.bag?.patterns ?? [])].pop() ?? string$1(inst._zod.bag);
-    inst._zod.parse = (payload, _) => {
-        if (def.coerce)
-            try {
-                payload.value = String(payload.value);
-            }
-            catch (_) { }
-        if (typeof payload.value === "string")
-            return payload;
-        payload.issues.push({
-            expected: "string",
-            code: "invalid_type",
-            input: payload.value,
-            inst,
-        });
-        return payload;
-    };
-});
-const $ZodUnknown = /*@__PURE__*/ $constructor("$ZodUnknown", (inst, def) => {
-    $ZodType.init(inst, def);
-    inst._zod.parse = (payload) => payload;
-});
-const $ZodRecord = /*@__PURE__*/ $constructor("$ZodRecord", (inst, def) => {
-    $ZodType.init(inst, def);
-    inst._zod.parse = (payload, ctx) => {
-        const input = payload.value;
-        if (!isPlainObject(input)) {
-            payload.issues.push({
-                expected: "record",
-                code: "invalid_type",
-                input,
-                inst,
-            });
-            return payload;
-        }
-        const proms = [];
-        const values = def.keyType._zod.values;
-        if (values) {
-            payload.value = {};
-            const recordKeys = new Set();
-            for (const key of values) {
-                if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-                    recordKeys.add(typeof key === "number" ? key.toString() : key);
-                    const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
-                    if (keyResult instanceof Promise) {
-                        throw new Error("Async schemas not supported in object keys currently");
-                    }
-                    if (keyResult.issues.length) {
-                        payload.issues.push({
-                            code: "invalid_key",
-                            origin: "record",
-                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-                            input: key,
-                            path: [key],
-                            inst,
-                        });
-                        continue;
-                    }
-                    const outKey = keyResult.value;
-                    const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
-                    if (result instanceof Promise) {
-                        proms.push(result.then((result) => {
-                            if (result.issues.length) {
-                                payload.issues.push(...prefixIssues(key, result.issues));
-                            }
-                            payload.value[outKey] = result.value;
-                        }));
-                    }
-                    else {
-                        if (result.issues.length) {
-                            payload.issues.push(...prefixIssues(key, result.issues));
-                        }
-                        payload.value[outKey] = result.value;
-                    }
-                }
-            }
-            let unrecognized;
-            for (const key in input) {
-                if (!recordKeys.has(key)) {
-                    unrecognized = unrecognized ?? [];
-                    unrecognized.push(key);
-                }
-            }
-            if (unrecognized && unrecognized.length > 0) {
-                payload.issues.push({
-                    code: "unrecognized_keys",
-                    input,
-                    inst,
-                    keys: unrecognized,
-                });
-            }
-        }
-        else {
-            payload.value = {};
-            // Reflect.ownKeys for Symbol-key support; filter non-enumerable to match z.object()
-            for (const key of Reflect.ownKeys(input)) {
-                if (key === "__proto__")
-                    continue;
-                if (!Object.prototype.propertyIsEnumerable.call(input, key))
-                    continue;
-                let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
-                if (keyResult instanceof Promise) {
-                    throw new Error("Async schemas not supported in object keys currently");
-                }
-                // Numeric string fallback: if key is a numeric string and failed, retry with Number(key)
-                // This handles z.number(), z.literal([1, 2, 3]), and unions containing numeric literals
-                const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
-                if (checkNumericKey) {
-                    const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
-                    if (retryResult instanceof Promise) {
-                        throw new Error("Async schemas not supported in object keys currently");
-                    }
-                    if (retryResult.issues.length === 0) {
-                        keyResult = retryResult;
-                    }
-                }
-                if (keyResult.issues.length) {
-                    if (def.mode === "loose") {
-                        // Pass through unchanged
-                        payload.value[key] = input[key];
-                    }
-                    else {
-                        // Default "strict" behavior: error on invalid key
-                        payload.issues.push({
-                            code: "invalid_key",
-                            origin: "record",
-                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-                            input: key,
-                            path: [key],
-                            inst,
-                        });
-                    }
-                    continue;
-                }
-                const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
-                if (result instanceof Promise) {
-                    proms.push(result.then((result) => {
-                        if (result.issues.length) {
-                            payload.issues.push(...prefixIssues(key, result.issues));
-                        }
-                        payload.value[keyResult.value] = result.value;
-                    }));
-                }
-                else {
-                    if (result.issues.length) {
-                        payload.issues.push(...prefixIssues(key, result.issues));
-                    }
-                    payload.value[keyResult.value] = result.value;
-                }
-            }
-        }
-        if (proms.length) {
-            return Promise.all(proms).then(() => payload);
-        }
-        return payload;
-    };
-});
-
-// @__NO_SIDE_EFFECTS__
-function _string(Class, params) {
-    return new Class({
-        type: "string",
-        ...normalizeParams(params),
-    });
-}
-// @__NO_SIDE_EFFECTS__
-function _unknown(Class) {
-    return new Class({
-        type: "unknown",
-    });
-}
-
-const ZodMiniType = /*@__PURE__*/ $constructor("ZodMiniType", (inst, def) => {
-    if (!inst._zod)
-        throw new Error("Uninitialized schema in ZodMiniType.");
-    $ZodType.init(inst, def);
-    inst.def = def;
-    inst.type = def.type;
-    inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
-    inst.safeParse = (data, params) => safeParse(inst, data, params);
-    inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
-    inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
-    inst.check = (...checks) => {
-        return inst.clone({
-            ...def,
-            checks: [
-                ...(def.checks ?? []),
-                ...checks.map((ch) => typeof ch === "function"
-                    ? {
-                        _zod: { check: ch, def: { check: "custom" }, onattach: [] },
-                    }
-                    : ch),
-            ],
-        }, { parent: true });
-    };
-    inst.with = inst.check;
-    inst.clone = (_def, params) => clone(inst, _def, params);
-    inst.brand = () => inst;
-    inst.register = ((reg, meta) => {
-        reg.add(inst, meta);
-        return inst;
-    });
-    inst.apply = (fn) => fn(inst);
-});
-const ZodMiniString = /*@__PURE__*/ $constructor("ZodMiniString", (inst, def) => {
-    $ZodString.init(inst, def);
-    ZodMiniType.init(inst, def);
-});
-// @__NO_SIDE_EFFECTS__
-function string(params) {
-    return _string(ZodMiniString, params);
-}
-const ZodMiniUnknown = /*@__PURE__*/ $constructor("ZodMiniUnknown", (inst, def) => {
-    $ZodUnknown.init(inst, def);
-    ZodMiniType.init(inst, def);
-});
-// @__NO_SIDE_EFFECTS__
-function unknown() {
-    return _unknown(ZodMiniUnknown);
-}
-const ZodMiniRecord = /*@__PURE__*/ $constructor("ZodMiniRecord", (inst, def) => {
-    $ZodRecord.init(inst, def);
-    ZodMiniType.init(inst, def);
-});
-// @__NO_SIDE_EFFECTS__
-function record(keyType, valueType, params) {
-    // v3-compat: z.record(valueType, params?) — defaults keyType to z.string()
-    if (!valueType || !valueType._zod) {
-        return new ZodMiniRecord({
-            type: "record",
-            keyType: string(),
-            valueType: keyType,
-            ...normalizeParams(valueType),
-        });
-    }
-    return new ZodMiniRecord({
-        type: "record",
-        keyType,
-        valueType: valueType,
-        ...normalizeParams(params),
-    });
-}
-
-function isRecord(val) {
-    const schema = record(string(), unknown());
-    const res = schema.safeParse(val);
-    return res.success;
-}
-function sameStructure(a, b) {
-    let testedValidKeysCount = 0;
-    function sameStructureRec(ref, tested, path = []) {
-        if (typeof ref === "string" && typeof tested === "string") {
-            testedValidKeysCount += 1;
-            return;
-        }
-        if (!isRecord(ref) || !isRecord(tested))
-            return;
-        for (const key in ref) {
-            if (!Object.prototype.hasOwnProperty.call(tested, key)) {
-                continue;
-            }
-            sameStructureRec(ref[key], tested[key], [...path, key]);
-        }
-        return;
-    }
-    sameStructureRec(a, b, []);
-    return testedValidKeysCount;
-}
-async function loadLocaleFile(localesPath, localeCode) {
-    try {
-        const locale = (await import(pathToFileURL(`${localesPath}/${localeCode}.json`).href, { assert: { type: 'json' } })).default;
-        if (typeof locale !== "object")
-            return undefined;
-        if (!locale)
-            return undefined;
-        return locale;
-    }
-    catch {
-        return undefined;
-    }
-}
-async function countTotalKeys(locale) {
-    let count = 0;
-    function countRec(obj) {
-        for (const key in obj) {
-            if (typeof obj[key] === "string") {
-                count += 1;
-            }
-            else if (isRecord(obj[key])) {
-                countRec(obj[key]);
-            }
-        }
-    }
-    countRec(locale);
-    return count;
-}
-async function verifyTranslation(localesPath, localeCode, defaultLocaleCode = "en-US") {
-    if (!localeCode) {
-        console.error("Please provide a locale code as an argument.");
-        process.exit(1);
-    }
-    const defaultLocale = await loadLocaleFile(localesPath, defaultLocaleCode);
-    if (!defaultLocale) {
-        return err("Default locale file not found or invalid.");
-    }
-    const locale = await loadLocaleFile(localesPath, localeCode);
-    if (!locale) {
-        return err("Locale file not found or invalid.");
-    }
-    const refKeysCount = await countTotalKeys(defaultLocale);
-    const testedValidKeysCount = sameStructure(defaultLocale, locale);
-    return ok({
-        ref: refKeysCount,
-        tested: testedValidKeysCount,
-    });
-}
-
-async function getAllLocalesCodes(localesPath) {
-    if (!await fs$1.stat(localesPath).then(stat => stat.isDirectory()).catch(() => false)) {
-        return [];
-    }
-    const files = await fs$1.readdir(localesPath);
-    return files
-        .filter((file) => file.endsWith(".json"))
-        .map((file) => file.replace(".json", ""));
-}
-async function getTranslationProgress(localesPath, localeCode, defaultLocaleCode = "en-US") {
-    const [error, result] = await verifyTranslation(localesPath, localeCode, defaultLocaleCode);
-    if (error) {
-        return null;
-    }
-    const { ref, tested } = result;
-    return Math.round((tested / ref) * 100);
-}
-
 // --- DEFAULTS START ---
 const DEFAULTS = {
     aa: 'ET',
@@ -34568,11 +33828,15 @@ function localeToFlag(locale) {
     return codeToEmoji(code);
 }
 
-async function readRepoReadme(octokit, repo, path) {
-    const { data: fileData } = await octokit.rest.repos.getContent({
+async function readPath(octokit, repo, path) {
+    const { data } = await octokit.rest.repos.getContent({
         ...repo,
         path: path,
     });
+    return data;
+}
+async function readRepoReadme(octokit, repo, path) {
+    const fileData = await readPath(octokit, repo, path);
     if (!("content" in fileData)) {
         return err(Error("README.md is not a file or does not exist."));
     }
@@ -34594,27 +33858,763 @@ async function writeRepoReadme(octokit, repo, path, content, sha) {
         return err(error instanceof Error ? error : new Error("Unknown error"));
     }
 }
-const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
-async function getTranslationProgressTable(localesPath, defaultLocaleCode = "en-US") {
-    const strings = [];
-    const codes = await getAllLocalesCodes(localesPath);
-    if (codes.length === 0)
-        return "No translations found.";
-    if (!codes.includes(defaultLocaleCode)) {
-        return `Default locale (${defaultLocaleCode}) not found.`;
+async function getAllLocalesCodes(octokit, repo, path) {
+    const folderData = await readPath(octokit, repo, path);
+    if (!Array.isArray(folderData)) {
+        return err(Error("Locales path is not a folder or does not exist."));
     }
+    return ok(folderData.map(item => item.name.replace(".json", "")));
+}
+async function loadLocaleFile(octokit, repo, localesPath, localeCode) {
+    const fileData = await readPath(octokit, repo, `${localesPath}/${localeCode}.json`);
+    if (!("content" in fileData)) {
+        return err(Error(`Locale file for code ${localeCode} not found or is not a file.`));
+    }
+    const content = Buffer.from(fileData.content, "base64").toString("utf-8");
+    return ok(JSON.parse(content));
+}
+
+var _a;
+function $constructor(name, initializer, params) {
+    function init(inst, def) {
+        if (!inst._zod) {
+            Object.defineProperty(inst, "_zod", {
+                value: {
+                    def,
+                    constr: _,
+                    traits: new Set(),
+                },
+                enumerable: false,
+            });
+        }
+        if (inst._zod.traits.has(name)) {
+            return;
+        }
+        inst._zod.traits.add(name);
+        initializer(inst, def);
+        // support prototype modifications
+        const proto = _.prototype;
+        const keys = Object.keys(proto);
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            if (!(k in inst)) {
+                inst[k] = proto[k].bind(inst);
+            }
+        }
+    }
+    // doesn't work if Parent has a constructor with arguments
+    const Parent = params?.Parent ?? Object;
+    class Definition extends Parent {
+    }
+    Object.defineProperty(Definition, "name", { value: name });
+    function _(def) {
+        var _a;
+        const inst = params?.Parent ? new Definition() : this;
+        init(inst, def);
+        (_a = inst._zod).deferred ?? (_a.deferred = []);
+        for (const fn of inst._zod.deferred) {
+            fn();
+        }
+        return inst;
+    }
+    Object.defineProperty(_, "init", { value: init });
+    Object.defineProperty(_, Symbol.hasInstance, {
+        value: (inst) => {
+            if (params?.Parent && inst instanceof params.Parent)
+                return true;
+            return inst?._zod?.traits?.has(name);
+        },
+    });
+    Object.defineProperty(_, "name", { value: name });
+    return _;
+}
+class $ZodAsyncError extends Error {
+    constructor() {
+        super(`Encountered Promise during synchronous parse. Use .parseAsync() instead.`);
+    }
+}
+(_a = globalThis).__zod_globalConfig ?? (_a.__zod_globalConfig = {});
+const globalConfig = globalThis.__zod_globalConfig;
+function config(newConfig) {
+    return globalConfig;
+}
+
+function jsonStringifyReplacer(_, value) {
+    if (typeof value === "bigint")
+        return value.toString();
+    return value;
+}
+const EVALUATING = /* @__PURE__*/ Symbol("evaluating");
+function defineLazy(object, key, getter) {
+    let value = undefined;
+    Object.defineProperty(object, key, {
+        get() {
+            if (value === EVALUATING) {
+                // Circular reference detected, return undefined to break the cycle
+                return undefined;
+            }
+            if (value === undefined) {
+                value = EVALUATING;
+                value = getter();
+            }
+            return value;
+        },
+        set(v) {
+            Object.defineProperty(object, key, {
+                value: v,
+                // configurable: true,
+            });
+            // object[key] = v;
+        },
+        configurable: true,
+    });
+}
+const captureStackTrace = ("captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => { });
+function isObject(data) {
+    return typeof data === "object" && data !== null && !Array.isArray(data);
+}
+function isPlainObject(o) {
+    if (isObject(o) === false)
+        return false;
+    // modified constructor
+    const ctor = o.constructor;
+    if (ctor === undefined)
+        return true;
+    if (typeof ctor !== "function")
+        return true;
+    // modified prototype
+    const prot = ctor.prototype;
+    if (isObject(prot) === false)
+        return false;
+    // ctor doesn't have static `isPrototypeOf`
+    if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
+        return false;
+    }
+    return true;
+}
+// zod-specific utils
+function clone(inst, def, params) {
+    const cl = new inst._zod.constr(def ?? inst._zod.def);
+    if (!def || params?.parent)
+        cl._zod.parent = inst;
+    return cl;
+}
+function normalizeParams(_params) {
+    const params = _params;
+    if (!params)
+        return {};
+    if (typeof params === "string")
+        return { error: () => params };
+    if (params?.message !== undefined) {
+        if (params?.error !== undefined)
+            throw new Error("Cannot specify both `message` and `error` params");
+        params.error = params.message;
+    }
+    delete params.message;
+    if (typeof params.error === "string")
+        return { ...params, error: () => params.error };
+    return params;
+}
+// invalid_type | too_big | too_small | invalid_format | not_multiple_of | unrecognized_keys | invalid_union | invalid_key | invalid_element | invalid_value | custom
+function aborted(x, startIndex = 0) {
+    if (x.aborted === true)
+        return true;
+    for (let i = startIndex; i < x.issues.length; i++) {
+        if (x.issues[i]?.continue !== true) {
+            return true;
+        }
+    }
+    return false;
+}
+// Checks for explicit abort (continue === false), as opposed to implicit abort (continue === undefined).
+// Used to respect `abort: true` in .refine() even for checks that have a `when` function.
+function explicitlyAborted(x, startIndex = 0) {
+    if (x.aborted === true)
+        return true;
+    for (let i = startIndex; i < x.issues.length; i++) {
+        if (x.issues[i]?.continue === false) {
+            return true;
+        }
+    }
+    return false;
+}
+function prefixIssues(path, issues) {
+    return issues.map((iss) => {
+        var _a;
+        (_a = iss).path ?? (_a.path = []);
+        iss.path.unshift(path);
+        return iss;
+    });
+}
+function unwrapMessage(message) {
+    return typeof message === "string" ? message : message?.message;
+}
+function finalizeIssue(iss, ctx, config) {
+    const message = iss.message
+        ? iss.message
+        : (unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ??
+            unwrapMessage(ctx?.error?.(iss)) ??
+            unwrapMessage(config.customError?.(iss)) ??
+            unwrapMessage(config.localeError?.(iss)) ??
+            "Invalid input");
+    const { inst: _inst, continue: _continue, input: _input, ...rest } = iss;
+    rest.path ?? (rest.path = []);
+    rest.message = message;
+    if (ctx?.reportInput) {
+        rest.input = _input;
+    }
+    return rest;
+}
+
+const initializer = (inst, def) => {
+    inst.name = "$ZodError";
+    Object.defineProperty(inst, "_zod", {
+        value: inst._zod,
+        enumerable: false,
+    });
+    Object.defineProperty(inst, "issues", {
+        value: def,
+        enumerable: false,
+    });
+    inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
+    Object.defineProperty(inst, "toString", {
+        value: () => inst.message,
+        enumerable: false,
+    });
+};
+const $ZodError = $constructor("$ZodError", initializer);
+const $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
+
+const _parse = (_Err) => (schema, value, _ctx, _params) => {
+    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+    const result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise) {
+        throw new $ZodAsyncError();
+    }
+    if (result.issues.length) {
+        const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        captureStackTrace(e, _params?.callee);
+        throw e;
+    }
+    return result.value;
+};
+const parse = /* @__PURE__*/ _parse($ZodRealError);
+const _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
+    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+    let result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise)
+        result = await result;
+    if (result.issues.length) {
+        const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+        captureStackTrace(e, params?.callee);
+        throw e;
+    }
+    return result.value;
+};
+const parseAsync = /* @__PURE__*/ _parseAsync($ZodRealError);
+const _safeParse = (_Err) => (schema, value, _ctx) => {
+    const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+    const result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise) {
+        throw new $ZodAsyncError();
+    }
+    return result.issues.length
+        ? {
+            success: false,
+            error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
+        }
+        : { success: true, data: result.value };
+};
+const safeParse = /* @__PURE__*/ _safeParse($ZodRealError);
+const _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
+    const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+    let result = schema._zod.run({ value, issues: [] }, ctx);
+    if (result instanceof Promise)
+        result = await result;
+    return result.issues.length
+        ? {
+            success: false,
+            error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config()))),
+        }
+        : { success: true, data: result.value };
+};
+const safeParseAsync = /* @__PURE__*/ _safeParseAsync($ZodRealError);
+
+const string$1 = (params) => {
+    const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
+    return new RegExp(`^${regex}$`);
+};
+const number = /^-?\d+(?:\.\d+)?$/;
+
+const version = {
+    major: 4,
+    minor: 4,
+    patch: 3,
+};
+
+const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
+    var _a;
+    inst ?? (inst = {});
+    inst._zod.def = def; // set _def property
+    inst._zod.bag = inst._zod.bag || {}; // initialize _bag object
+    inst._zod.version = version;
+    const checks = [...(inst._zod.def.checks ?? [])];
+    // if inst is itself a checks.$ZodCheck, run it as a check
+    if (inst._zod.traits.has("$ZodCheck")) {
+        checks.unshift(inst);
+    }
+    for (const ch of checks) {
+        for (const fn of ch._zod.onattach) {
+            fn(inst);
+        }
+    }
+    if (checks.length === 0) {
+        // deferred initializer
+        // inst._zod.parse is not yet defined
+        (_a = inst._zod).deferred ?? (_a.deferred = []);
+        inst._zod.deferred?.push(() => {
+            inst._zod.run = inst._zod.parse;
+        });
+    }
+    else {
+        const runChecks = (payload, checks, ctx) => {
+            let isAborted = aborted(payload);
+            let asyncResult;
+            for (const ch of checks) {
+                if (ch._zod.def.when) {
+                    if (explicitlyAborted(payload))
+                        continue;
+                    const shouldRun = ch._zod.def.when(payload);
+                    if (!shouldRun)
+                        continue;
+                }
+                else if (isAborted) {
+                    continue;
+                }
+                const currLen = payload.issues.length;
+                const _ = ch._zod.check(payload);
+                if (_ instanceof Promise && ctx?.async === false) {
+                    throw new $ZodAsyncError();
+                }
+                if (asyncResult || _ instanceof Promise) {
+                    asyncResult = (asyncResult ?? Promise.resolve()).then(async () => {
+                        await _;
+                        const nextLen = payload.issues.length;
+                        if (nextLen === currLen)
+                            return;
+                        if (!isAborted)
+                            isAborted = aborted(payload, currLen);
+                    });
+                }
+                else {
+                    const nextLen = payload.issues.length;
+                    if (nextLen === currLen)
+                        continue;
+                    if (!isAborted)
+                        isAborted = aborted(payload, currLen);
+                }
+            }
+            if (asyncResult) {
+                return asyncResult.then(() => {
+                    return payload;
+                });
+            }
+            return payload;
+        };
+        const handleCanaryResult = (canary, payload, ctx) => {
+            // abort if the canary is aborted
+            if (aborted(canary)) {
+                canary.aborted = true;
+                return canary;
+            }
+            // run checks first, then
+            const checkResult = runChecks(payload, checks, ctx);
+            if (checkResult instanceof Promise) {
+                if (ctx.async === false)
+                    throw new $ZodAsyncError();
+                return checkResult.then((checkResult) => inst._zod.parse(checkResult, ctx));
+            }
+            return inst._zod.parse(checkResult, ctx);
+        };
+        inst._zod.run = (payload, ctx) => {
+            if (ctx.skipChecks) {
+                return inst._zod.parse(payload, ctx);
+            }
+            if (ctx.direction === "backward") {
+                // run canary
+                // initial pass (no checks)
+                const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
+                if (canary instanceof Promise) {
+                    return canary.then((canary) => {
+                        return handleCanaryResult(canary, payload, ctx);
+                    });
+                }
+                return handleCanaryResult(canary, payload, ctx);
+            }
+            // forward
+            const result = inst._zod.parse(payload, ctx);
+            if (result instanceof Promise) {
+                if (ctx.async === false)
+                    throw new $ZodAsyncError();
+                return result.then((result) => runChecks(result, checks, ctx));
+            }
+            return runChecks(result, checks, ctx);
+        };
+    }
+    // Lazy initialize ~standard to avoid creating objects for every schema
+    defineLazy(inst, "~standard", () => ({
+        validate: (value) => {
+            try {
+                const r = safeParse(inst, value);
+                return r.success ? { value: r.data } : { issues: r.error?.issues };
+            }
+            catch (_) {
+                return safeParseAsync(inst, value).then((r) => (r.success ? { value: r.data } : { issues: r.error?.issues }));
+            }
+        },
+        vendor: "zod",
+        version: 1,
+    }));
+});
+const $ZodString = /*@__PURE__*/ $constructor("$ZodString", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.pattern = [...(inst?._zod.bag?.patterns ?? [])].pop() ?? string$1(inst._zod.bag);
+    inst._zod.parse = (payload, _) => {
+        if (def.coerce)
+            try {
+                payload.value = String(payload.value);
+            }
+            catch (_) { }
+        if (typeof payload.value === "string")
+            return payload;
+        payload.issues.push({
+            expected: "string",
+            code: "invalid_type",
+            input: payload.value,
+            inst,
+        });
+        return payload;
+    };
+});
+const $ZodUnknown = /*@__PURE__*/ $constructor("$ZodUnknown", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.parse = (payload) => payload;
+});
+const $ZodRecord = /*@__PURE__*/ $constructor("$ZodRecord", (inst, def) => {
+    $ZodType.init(inst, def);
+    inst._zod.parse = (payload, ctx) => {
+        const input = payload.value;
+        if (!isPlainObject(input)) {
+            payload.issues.push({
+                expected: "record",
+                code: "invalid_type",
+                input,
+                inst,
+            });
+            return payload;
+        }
+        const proms = [];
+        const values = def.keyType._zod.values;
+        if (values) {
+            payload.value = {};
+            const recordKeys = new Set();
+            for (const key of values) {
+                if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
+                    recordKeys.add(typeof key === "number" ? key.toString() : key);
+                    const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+                    if (keyResult instanceof Promise) {
+                        throw new Error("Async schemas not supported in object keys currently");
+                    }
+                    if (keyResult.issues.length) {
+                        payload.issues.push({
+                            code: "invalid_key",
+                            origin: "record",
+                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+                            input: key,
+                            path: [key],
+                            inst,
+                        });
+                        continue;
+                    }
+                    const outKey = keyResult.value;
+                    const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+                    if (result instanceof Promise) {
+                        proms.push(result.then((result) => {
+                            if (result.issues.length) {
+                                payload.issues.push(...prefixIssues(key, result.issues));
+                            }
+                            payload.value[outKey] = result.value;
+                        }));
+                    }
+                    else {
+                        if (result.issues.length) {
+                            payload.issues.push(...prefixIssues(key, result.issues));
+                        }
+                        payload.value[outKey] = result.value;
+                    }
+                }
+            }
+            let unrecognized;
+            for (const key in input) {
+                if (!recordKeys.has(key)) {
+                    unrecognized = unrecognized ?? [];
+                    unrecognized.push(key);
+                }
+            }
+            if (unrecognized && unrecognized.length > 0) {
+                payload.issues.push({
+                    code: "unrecognized_keys",
+                    input,
+                    inst,
+                    keys: unrecognized,
+                });
+            }
+        }
+        else {
+            payload.value = {};
+            // Reflect.ownKeys for Symbol-key support; filter non-enumerable to match z.object()
+            for (const key of Reflect.ownKeys(input)) {
+                if (key === "__proto__")
+                    continue;
+                if (!Object.prototype.propertyIsEnumerable.call(input, key))
+                    continue;
+                let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+                if (keyResult instanceof Promise) {
+                    throw new Error("Async schemas not supported in object keys currently");
+                }
+                // Numeric string fallback: if key is a numeric string and failed, retry with Number(key)
+                // This handles z.number(), z.literal([1, 2, 3]), and unions containing numeric literals
+                const checkNumericKey = typeof key === "string" && number.test(key) && keyResult.issues.length;
+                if (checkNumericKey) {
+                    const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+                    if (retryResult instanceof Promise) {
+                        throw new Error("Async schemas not supported in object keys currently");
+                    }
+                    if (retryResult.issues.length === 0) {
+                        keyResult = retryResult;
+                    }
+                }
+                if (keyResult.issues.length) {
+                    if (def.mode === "loose") {
+                        // Pass through unchanged
+                        payload.value[key] = input[key];
+                    }
+                    else {
+                        // Default "strict" behavior: error on invalid key
+                        payload.issues.push({
+                            code: "invalid_key",
+                            origin: "record",
+                            issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+                            input: key,
+                            path: [key],
+                            inst,
+                        });
+                    }
+                    continue;
+                }
+                const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+                if (result instanceof Promise) {
+                    proms.push(result.then((result) => {
+                        if (result.issues.length) {
+                            payload.issues.push(...prefixIssues(key, result.issues));
+                        }
+                        payload.value[keyResult.value] = result.value;
+                    }));
+                }
+                else {
+                    if (result.issues.length) {
+                        payload.issues.push(...prefixIssues(key, result.issues));
+                    }
+                    payload.value[keyResult.value] = result.value;
+                }
+            }
+        }
+        if (proms.length) {
+            return Promise.all(proms).then(() => payload);
+        }
+        return payload;
+    };
+});
+
+// @__NO_SIDE_EFFECTS__
+function _string(Class, params) {
+    return new Class({
+        type: "string",
+        ...normalizeParams(params),
+    });
+}
+// @__NO_SIDE_EFFECTS__
+function _unknown(Class) {
+    return new Class({
+        type: "unknown",
+    });
+}
+
+const ZodMiniType = /*@__PURE__*/ $constructor("ZodMiniType", (inst, def) => {
+    if (!inst._zod)
+        throw new Error("Uninitialized schema in ZodMiniType.");
+    $ZodType.init(inst, def);
+    inst.def = def;
+    inst.type = def.type;
+    inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
+    inst.safeParse = (data, params) => safeParse(inst, data, params);
+    inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
+    inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
+    inst.check = (...checks) => {
+        return inst.clone({
+            ...def,
+            checks: [
+                ...(def.checks ?? []),
+                ...checks.map((ch) => typeof ch === "function"
+                    ? {
+                        _zod: { check: ch, def: { check: "custom" }, onattach: [] },
+                    }
+                    : ch),
+            ],
+        }, { parent: true });
+    };
+    inst.with = inst.check;
+    inst.clone = (_def, params) => clone(inst, _def, params);
+    inst.brand = () => inst;
+    inst.register = ((reg, meta) => {
+        reg.add(inst, meta);
+        return inst;
+    });
+    inst.apply = (fn) => fn(inst);
+});
+const ZodMiniString = /*@__PURE__*/ $constructor("ZodMiniString", (inst, def) => {
+    $ZodString.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function string(params) {
+    return _string(ZodMiniString, params);
+}
+const ZodMiniUnknown = /*@__PURE__*/ $constructor("ZodMiniUnknown", (inst, def) => {
+    $ZodUnknown.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function unknown() {
+    return _unknown(ZodMiniUnknown);
+}
+const ZodMiniRecord = /*@__PURE__*/ $constructor("ZodMiniRecord", (inst, def) => {
+    $ZodRecord.init(inst, def);
+    ZodMiniType.init(inst, def);
+});
+// @__NO_SIDE_EFFECTS__
+function record(keyType, valueType, params) {
+    // v3-compat: z.record(valueType, params?) — defaults keyType to z.string()
+    if (!valueType || !valueType._zod) {
+        return new ZodMiniRecord({
+            type: "record",
+            keyType: string(),
+            valueType: keyType,
+            ...normalizeParams(valueType),
+        });
+    }
+    return new ZodMiniRecord({
+        type: "record",
+        keyType,
+        valueType: valueType,
+        ...normalizeParams(params),
+    });
+}
+
+function isRecord(val) {
+    const schema = record(string(), unknown());
+    const res = schema.safeParse(val);
+    return res.success;
+}
+function sameStructure(ref, tested) {
+    let testedValidKeysCount = 0;
+    function sameStructureRec(ref, tested, path = []) {
+        if (typeof ref === "string" && typeof tested === "string") {
+            testedValidKeysCount += 1;
+            return;
+        }
+        if (!isRecord(ref) || !isRecord(tested))
+            return;
+        for (const key in ref) {
+            if (!Object.prototype.hasOwnProperty.call(tested, key)) {
+                continue;
+            }
+            sameStructureRec(ref[key], tested[key], [...path, key]);
+        }
+        return;
+    }
+    sameStructureRec(ref, tested, []);
+    return testedValidKeysCount;
+}
+function countTotalKeys(locale) {
+    let count = 0;
+    function countRec(obj) {
+        for (const key in obj) {
+            if (typeof obj[key] === "string") {
+                count += 1;
+            }
+            else if (isRecord(obj[key])) {
+                countRec(obj[key]);
+            }
+        }
+    }
+    countRec(locale);
+    return count;
+}
+function verifyTranslation(ref, tested) {
+    return sameStructure(ref, tested);
+}
+
+async function getTranslationsProgress(octokit, repo, localesPath, defaultLocaleCode = "en-US") {
+    const localesProgress = [];
+    const [error, codes] = await getAllLocalesCodes(octokit, repo, localesPath);
+    if (error) {
+        return err(error);
+    }
+    if (codes.length === 0)
+        return err("No translations found.");
+    if (!codes.includes(defaultLocaleCode)) {
+        return err(`Default locale (${defaultLocaleCode}) not found.`);
+    }
+    const [error2, defaultLocale] = await loadLocaleFile(octokit, repo, localesPath, defaultLocaleCode);
+    if (error2) {
+        return err(error2);
+    }
+    const defaultLocaleKeysCount = countTotalKeys(defaultLocale);
     for (const code of codes) {
         if (code === defaultLocaleCode)
             continue;
+        const [error3, locale] = await loadLocaleFile(octokit, repo, localesPath, code);
+        if (error3) {
+            console.warn(`Failed to load locale file for ${code}: ${error3 instanceof Error ? error3.message : error3}`);
+            continue;
+        }
+        const localeValidKeysCount = verifyTranslation(defaultLocale, locale);
+        const progress = Math.round((localeValidKeysCount / defaultLocaleKeysCount) * 100);
+        localesProgress.push([code, progress]);
+    }
+    if (localesProgress.length === 0) {
+        return err("No translations found.");
+    }
+    return ok(localesProgress);
+}
+
+const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+async function getTranslationProgressTable(octokit, repo, localesPath, defaultLocaleCode = "en-US") {
+    const [error, translationsProgress] = await getTranslationsProgress(octokit, repo, localesPath, defaultLocaleCode);
+    if (error) {
+        return err(error);
+    }
+    const strings = [];
+    for (const [code, progress] of translationsProgress) {
         const simplifiedCode = code.split("-")[0];
-        const progress = await getTranslationProgress(localesPath, code, defaultLocaleCode);
         const flag = localeToFlag(code);
         strings.push(`${flag ? `${flag} ` : ""}${displayNames.of(simplifiedCode)} (${code}): ${progress}%`);
     }
     if (strings.length === 0) {
-        return "No translations found.";
+        return err("No translations found.");
     }
-    return strings.join("; ");
+    return ok(strings.join("\n"));
 }
 async function run() {
     const token = getInput("gh-token");
@@ -34628,7 +34628,9 @@ async function run() {
             throw readError;
         const { fileData, currentContent } = result;
         info(`Current README length: ${currentContent.length} chars`);
-        const translationProgressTable = await getTranslationProgressTable(localesPath, defaultLocaleCode);
+        const [error, translationProgressTable] = await getTranslationProgressTable(octokit, context.repo, localesPath, defaultLocaleCode);
+        if (error)
+            throw error;
         const newContent = `${currentContent}\n\nTranslations progress at ${new Date().toISOString()}:\n${translationProgressTable}`;
         const [writeError, _] = await writeRepoReadme(octokit, context.repo, readmePath, newContent, fileData.sha);
         if (writeError)

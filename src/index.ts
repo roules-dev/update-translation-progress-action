@@ -2,75 +2,38 @@ import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { fileURLToPath } from "url";
 import { err, ok } from "./lib/error-handling.js";
-import { getAllLocalesCodes, getTranslationProgress } from "./tools/gather-translations-info.js";
 import { localeToFlag } from "./lib/locale-to-flag.js";
+import { readRepoReadme, writeRepoReadme } from "./lib/read-write-repo.js";
+import { getTranslationsProgress } from "./tools/gather-translations-info.js";
+import type { Octokit, Repo } from "./types/github.js";
 
-async function readRepoReadme(
-    octokit: ReturnType<typeof github.getOctokit>, 
-    repo: { owner: string; repo: string }, 
-    path: string
-) {
-    const { data: fileData } = await octokit.rest.repos.getContent({
-        ...repo,
-        path: path,
-    })
-
-    if (!("content" in fileData)) {
-        return err(Error("README.md is not a file or does not exist."))
-    }
-
-    const currentContent = Buffer.from(fileData.content, "base64").toString("utf-8")
-    return ok({ fileData, currentContent })
-}
-
-async function writeRepoReadme(
-    octokit: ReturnType<typeof github.getOctokit>, 
-    repo: { owner: string; repo: string },
-    path: string,
-    content: string,
-    sha: string
-) {
-    try {
-        const response = await octokit.rest.repos.createOrUpdateFileContents({
-            ...repo,
-            path: path,
-            message: "[chore]: update translation progress via action",
-            content: Buffer.from(content).toString("base64"),
-            sha: sha
-        })
-
-        return ok(response)
-    }
-    catch (error) {
-        return err(error instanceof Error ? error : new Error("Unknown error"))
-    }
-}
 
 const displayNames = new Intl.DisplayNames(['en'], { type: 'language' })
-export async function getTranslationProgressTable(localesPath: string, defaultLocaleCode = "en-US") {
-    const strings = []
-    const codes = await getAllLocalesCodes(localesPath)
-
-    if (codes.length === 0) return "No translations found."
-    if (!codes.includes(defaultLocaleCode)) {
-        return `Default locale (${defaultLocaleCode}) not found.`
+export async function getTranslationProgressTable(
+    octokit: Octokit,
+    repo: Repo,
+    localesPath: string, 
+    defaultLocaleCode = "en-US"
+) {
+    const [error, translationsProgress] = await getTranslationsProgress(octokit, repo, localesPath, defaultLocaleCode)
+    if (error) {
+        return err(error)
     }
 
-    for (const code of codes) {
-        if (code === defaultLocaleCode) continue
+    const strings: string[] = []
 
+    for (const [code, progress] of translationsProgress) {
         const simplifiedCode = code.split("-")[0]!
 
-        const progress = await getTranslationProgress(localesPath, code, defaultLocaleCode)
         const flag = localeToFlag(code)
         strings.push(`${flag ? `${flag} ` : ""}${displayNames.of(simplifiedCode)} (${code}): ${progress}%`)
     }
 
     if (strings.length === 0) {
-        return "No translations found."
+        return err("No translations found.")
     }
 
-    return strings.join("; ")
+    return ok(strings.join("\n"))
 }
 
 
@@ -90,7 +53,8 @@ export async function run() {
         const { fileData, currentContent } = result
         core.info(`Current README length: ${currentContent.length} chars`)
 
-        const translationProgressTable = await getTranslationProgressTable(localesPath, defaultLocaleCode)
+        const [error, translationProgressTable] = await getTranslationProgressTable(octokit, github.context.repo, localesPath, defaultLocaleCode)
+        if (error) throw error
 
         const newContent = `${currentContent}\n\nTranslations progress at ${new Date().toISOString()}:\n${translationProgressTable}`
 

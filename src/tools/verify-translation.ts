@@ -1,6 +1,4 @@
-import { pathToFileURL } from "node:url"
 import * as z from "zod/mini";
-import { err, ok } from "../lib/error-handling.js";
 
 function isRecord(val: unknown): val is Record<string, unknown> {
     const schema = z.record(z.string(), z.unknown())
@@ -9,7 +7,7 @@ function isRecord(val: unknown): val is Record<string, unknown> {
     return res.success
 }
 
-function sameStructure(a: Record<string, unknown>, b: Record<string, unknown>) {
+function sameStructure(ref: Record<string, unknown>, tested: Record<string, unknown>) {
     let testedValidKeysCount = 0
 
     function sameStructureRec(ref: unknown, tested: unknown, path: string[] = []) {
@@ -30,28 +28,12 @@ function sameStructure(a: Record<string, unknown>, b: Record<string, unknown>) {
         return
     }
 
-    sameStructureRec(a, b, [])
+    sameStructureRec(ref, tested, [])
 
     return testedValidKeysCount
 }
 
-async function loadLocaleFile(localesPath: string, localeCode: string) {
-    try {
-        const locale = (await import(pathToFileURL(`${localesPath}/${localeCode}.json`).href, {
-            with: { type: "json" } 
-        })).default
-
-        if (typeof locale !== "object") return undefined
-    
-        if (!locale) return undefined
-        return locale
-    } 
-    catch {
-        return undefined
-    }
-}
-
-export async function countTotalKeys(locale: Record<string, unknown>) {
+export function countTotalKeys(locale: Record<string, unknown>) {
     let count = 0
 
     function countRec(obj: Record<string, unknown>) {
@@ -69,33 +51,10 @@ export async function countTotalKeys(locale: Record<string, unknown>) {
     return count
 }
 
-export async function verifyTranslation(
-    localesPath: string, 
-    localeCode: string, 
-    defaultLocaleCode = "en-US"
+export function verifyTranslation(
+    ref: Record<string, unknown>,
+    tested: Record<string, unknown>
 ) {
-    if (!localeCode) {
-        console.error("Please provide a locale code as an argument.")
-        process.exit(1)
-    }
-
-    const defaultLocale = await loadLocaleFile(localesPath, defaultLocaleCode)
-    if (!defaultLocale) {
-        return err("Default locale file not found or invalid.")
-    }
-
-    const locale = await loadLocaleFile(localesPath, localeCode)
-    if (!locale) {
-        return err("Locale file not found or invalid.")
-    }
-
-    const refKeysCount = await countTotalKeys(defaultLocale)
-    const testedValidKeysCount = sameStructure(defaultLocale, locale)
-
-
-    return ok({
-        ref: refKeysCount,
-        tested: testedValidKeysCount,
-    })
+    return sameStructure(ref, tested)
 }
 
