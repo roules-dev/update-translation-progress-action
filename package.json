@@ -1,12 +1,11 @@
 {
     "name": "update-translation-progress-action",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "runs a script that reads locales files and updates the translation progress in the readme",
     "main": "index.js",
     "scripts": {
         "build": "tsc && rollup --config rollup.config.js",
-        "scratch": "npx tsx src/scratch.ts",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "scratch": "npx tsx src/scratch.ts"
     },
     "repository": {
         "type": "git",
