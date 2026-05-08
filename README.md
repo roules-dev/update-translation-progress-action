@@ -88,4 +88,3 @@ I suggest also adding a comment like : `<!-- DO NOT EDIT - update translation pr
 | 🇺🇸 English (United States) | 🇫🇷 French (France) | 🇪🇸 Spanish (Spain) | 🇩🇪 German | 🇧🇷 Portuguese (Brazil) | 🇪🇸 Spanish (Latin America) |
 | --- | --- | --- | --- | --- | --- |
 | 100% | 81% | 77% | 49% | 20% | 38% |
-| 100% | 81% | 77% | 49% | 20% | 38% | 100% | 81% | 77% | 49% | 20% | 38% |
