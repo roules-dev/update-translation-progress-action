@@ -73,4 +73,9 @@ wherever you want the translations progress to be displayed.
 I suggest also adding a comment like : `<!-- DO NOT EDIT - update translation progress action marker -->` befor the markers, to warn users that this section should not be edited manually.
 
 
+## Example output
+| 🇺🇸 English (United States) | 🇫🇷 French (France) | 🇪🇸 Spanish (Spain) | 🇩🇪 German | 🇧🇷 Portuguese (Brazil) | 🇪🇸 Spanish (Latin America) |
+| --- | --- | --- | --- | --- | --- |
+| 100% | 81% | 77% | 49% | 20% | 38% |
+
 ## Example output :
