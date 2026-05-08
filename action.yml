@@ -25,3 +25,7 @@ inputs:
 runs:
     using: node24
     main: dist/index.js
+
+branding:
+    color: purple
+    icon: globe
