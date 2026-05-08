@@ -23,6 +23,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
 
 jobs:
   update-translations-progress:
@@ -38,6 +40,10 @@ jobs:
           readme-path: readme.md
 
 ```
+> [!TIP]
+> I recommand you put the `paths-ignore` rule, to prevent any infinite loop of the action triggering itself
+> (though it should not happen if github-actions[bot] does the push)
+
 ### Set up
 #### Pre-requisites
 Your repository must have the following files:
