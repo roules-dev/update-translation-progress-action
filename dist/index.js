@@ -33848,7 +33848,7 @@ async function writeRepoReadme(octokit, repo, path, content, sha) {
         const response = await octokit.rest.repos.createOrUpdateFileContents({
             ...repo,
             path: path,
-            message: "[chore]: update translation progress via action",
+            message: "[chore] update translation progress via action",
             content: Buffer.from(content).toString("base64"),
             sha: sha
         });
@@ -34599,22 +34599,35 @@ async function getTranslationsProgress(octokit, repo, localesPath, defaultLocale
     return ok(localesProgress);
 }
 
-const displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+const languageDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' });
 async function getTranslationProgressTable(octokit, repo, localesPath, defaultLocaleCode = "en-US") {
     const [error, translationsProgress] = await getTranslationsProgress(octokit, repo, localesPath, defaultLocaleCode);
     if (error) {
         return err(error);
     }
-    const strings = [];
+    const headers = ["|"];
+    const separators = ["|"];
+    const progressValues = ["|"];
     for (const [code, progress] of translationsProgress) {
-        const simplifiedCode = code.split("-")[0];
+        const lang = code.split("-")[0];
+        const region = code.split("-")[1];
         const flag = localeToFlag(code);
-        strings.push(`${flag ? `${flag} ` : ""}${displayNames.of(simplifiedCode)} (${code}): ${progress}%`);
+        const flagString = flag ? `${flag} ` : "";
+        const languageName = languageDisplayNames.of(lang) || lang;
+        const regionName = region ? ` (${regionDisplayNames.of(region) || region})` : "";
+        headers.push(` ${flagString}${languageName}${regionName} |`);
+        separators.push(" --- |");
+        progressValues.push(` ${progress}% |`);
     }
-    if (strings.length === 0) {
+    if (headers.length === 1) {
         return err("No translations found.");
     }
-    return ok(strings.join("\n"));
+    return ok(`${headers.join("")}\n${separators.join("")}\n${progressValues.join("")}`);
+}
+const translationProgressSectionRegex = /<!-- Translations - START -->(.|\n)+<!-- Translations - END -->/gm;
+function updateReadmeContent(currentContent, newTable) {
+    return currentContent.replace(translationProgressSectionRegex, `<!-- Translations - START -->\n${newTable}\n<!-- Translations - END -->`);
 }
 async function run() {
     const token = getInput("gh-token");
@@ -34627,11 +34640,10 @@ async function run() {
         if (readError)
             throw readError;
         const { fileData, currentContent } = result;
-        info(`Current README length: ${currentContent.length} chars`);
         const [error, translationProgressTable] = await getTranslationProgressTable(octokit, context.repo, localesPath, defaultLocaleCode);
         if (error)
             throw error;
-        const newContent = `${currentContent}\n\nTranslations progress at ${new Date().toISOString()}:\n${translationProgressTable}`;
+        const newContent = updateReadmeContent(currentContent, translationProgressTable);
         const [writeError, _] = await writeRepoReadme(octokit, context.repo, readmePath, newContent, fileData.sha);
         if (writeError)
             throw writeError;
@@ -34645,5 +34657,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     run();
 }
 
-export { getTranslationProgressTable, run };
+export { run };
 //# sourceMappingURL=index.js.map

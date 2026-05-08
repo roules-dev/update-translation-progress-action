@@ -8,8 +8,10 @@ import { getTranslationsProgress } from "./tools/gather-translations-info.js";
 import type { Octokit, Repo } from "./types/github.js";
 
 
-const displayNames = new Intl.DisplayNames(['en'], { type: 'language' })
-export async function getTranslationProgressTable(
+const languageDisplayNames = new Intl.DisplayNames(['en'], { type: 'language' })
+const regionDisplayNames = new Intl.DisplayNames(['en'], { type: 'region' })
+
+async function getTranslationProgressTable(
     octokit: Octokit,
     repo: Repo,
     localesPath: string, 
@@ -20,22 +22,39 @@ export async function getTranslationProgressTable(
         return err(error)
     }
 
-    const strings: string[] = []
+    const headers: string[] = ["|"]
+    const separators: string[] = ["|"]
+    const progressValues: string[] = ["|"]
 
     for (const [code, progress] of translationsProgress) {
-        const simplifiedCode = code.split("-")[0]!
-
+        const lang = code.split("-")[0]!
+        const region = code.split("-")[1]
+        
         const flag = localeToFlag(code)
-        strings.push(`${flag ? `${flag} ` : ""}${displayNames.of(simplifiedCode)} (${code}): ${progress}%`)
+        const flagString = flag ? `${flag} ` : ""
+        const languageName = languageDisplayNames.of(lang) || lang
+        const regionName = region ? ` (${regionDisplayNames.of(region) || region})` : ""
+
+        headers.push(` ${flagString}${languageName}${regionName} |`)
+        separators.push(" --- |")
+        progressValues.push(` ${progress}% |`)
     }
 
-    if (strings.length === 0) {
+    if (headers.length === 1) {
         return err("No translations found.")
     }
 
-    return ok(strings.join("\n"))
+    return ok(`${headers.join("")}\n${separators.join("")}\n${progressValues.join("")}`)
 }
 
+const translationProgressSectionRegex = /<!-- Translations - START -->(.|\n)+<!-- Translations - END -->/gm
+
+function updateReadmeContent(currentContent: string, newTable: string) {
+    return currentContent.replace(
+        translationProgressSectionRegex, 
+        `<!-- Translations - START -->\n${newTable}\n<!-- Translations - END -->`
+    )
+}
 
 export async function run() {
     const token = core.getInput("gh-token")
@@ -51,12 +70,11 @@ export async function run() {
         if (readError) throw readError 
 
         const { fileData, currentContent } = result
-        core.info(`Current README length: ${currentContent.length} chars`)
 
         const [error, translationProgressTable] = await getTranslationProgressTable(octokit, github.context.repo, localesPath, defaultLocaleCode)
         if (error) throw error
 
-        const newContent = `${currentContent}\n\nTranslations progress at ${new Date().toISOString()}:\n${translationProgressTable}`
+        const newContent = updateReadmeContent(currentContent, translationProgressTable)
 
         const [writeError, _] = await writeRepoReadme(octokit, github.context.repo, readmePath, newContent, fileData.sha)
         if (writeError) throw writeError

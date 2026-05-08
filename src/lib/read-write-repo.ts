@@ -36,7 +36,7 @@ export async function writeRepoReadme(
         const response = await octokit.rest.repos.createOrUpdateFileContents({
             ...repo,
             path: path,
-            message: "[chore]: update translation progress via action",
+            message: "[chore] update translation progress via action",
             content: Buffer.from(content).toString("base64"),
             sha: sha
         })
