@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: update translations step
-        id: hello
+        id: translation-progress-update
         uses: roules-dev/update-translation-progress-action@main
         with:
           gh-token: ${{ secrets.GITHUB_TOKEN }}
@@ -64,6 +64,9 @@ Your repository must have the following files:
 > [!IMPORTANT]
 > Make sure to have the paths to the readme file and the locales JSON files set up correctly in the action inputs.
 
+> [!IMPORTANT]
+> Make sure to enable **`Read and write permissions `** in the settings of your repo (you find this in Settings/actions/Workflow permissions)
+
 After setting up the action in your repository, edit the readme file by adding the following comments:
 ```md
 <!-- Translations - START -->
@@ -72,10 +75,11 @@ After setting up the action in your repository, edit the readme file by adding t
 wherever you want the translations progress to be displayed.
 I suggest also adding a comment like : `<!-- DO NOT EDIT - update translation progress action marker -->` befor the markers, to warn users that this section should not be edited manually.
 
+> [!TIP]
+> You can have several translation sections in your readme file, they will all get updated
 
 ## Example output
 | 🇺🇸 English (United States) | 🇫🇷 French (France) | 🇪🇸 Spanish (Spain) | 🇩🇪 German | 🇧🇷 Portuguese (Brazil) | 🇪🇸 Spanish (Latin America) |
 | --- | --- | --- | --- | --- | --- |
 | 100% | 81% | 77% | 49% | 20% | 38% |
-
-## Example output :
+| 100% | 81% | 77% | 49% | 20% | 38% | 100% | 81% | 77% | 49% | 20% | 38% |
