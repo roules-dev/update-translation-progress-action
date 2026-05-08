@@ -65,7 +65,7 @@ Your repository must have the following files:
 > Make sure to have the paths to the readme file and the locales JSON files set up correctly in the action inputs.
 
 > [!IMPORTANT]
-> Make sure to enable **`Read and write permissions `** in the settings of your repo (you find this in Settings/actions/Workflow permissions)
+> Make sure to enable **`Read and write permissions`** in the settings of your repo (you find this in Settings/actions/Workflow permissions)
 
 After setting up the action in your repository, edit the readme file by adding the following comments:
 ```md
