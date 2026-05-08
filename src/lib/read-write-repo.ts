@@ -59,7 +59,10 @@ export async function getAllLocalesCodes(
         return err(Error("Locales path is not a folder or does not exist."))
     }
 
-    return ok(folderData.map(item => item.name.replace(".json", "")))
+    return ok(folderData
+        .filter(item => item.type === "file" && item.name.endsWith(".json"))
+        .map(item => item.name.replace(".json", ""))
+    )
 }
 
 export async function loadLocaleFile(    

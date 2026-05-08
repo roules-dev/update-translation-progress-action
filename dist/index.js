@@ -33863,7 +33863,9 @@ async function getAllLocalesCodes(octokit, repo, path) {
     if (!Array.isArray(folderData)) {
         return err(Error("Locales path is not a folder or does not exist."));
     }
-    return ok(folderData.map(item => item.name.replace(".json", "")));
+    return ok(folderData
+        .filter(item => item.type === "file" && item.name.endsWith(".json"))
+        .map(item => item.name.replace(".json", "")));
 }
 async function loadLocaleFile(octokit, repo, localesPath, localeCode) {
     const fileData = await readPath(octokit, repo, `${localesPath}/${localeCode}.json`);
