@@ -34625,7 +34625,7 @@ async function getTranslationProgressTable(octokit, repo, localesPath, defaultLo
     }
     return ok(`${headers.join("")}\n${separators.join("")}\n${progressValues.join("")}`);
 }
-const translationProgressSectionRegex = /<!-- Translations - START -->(.|\n)+<!-- Translations - END -->/gm;
+const translationProgressSectionRegex = /<!-- Translations - START -->[^<>]+<!-- Translations - END -->/gm;
 function updateReadmeContent(currentContent, newTable) {
     return currentContent.replace(translationProgressSectionRegex, `<!-- Translations - START -->\n${newTable}\n<!-- Translations - END -->`);
 }

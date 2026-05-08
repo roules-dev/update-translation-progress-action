@@ -47,7 +47,7 @@ async function getTranslationProgressTable(
     return ok(`${headers.join("")}\n${separators.join("")}\n${progressValues.join("")}`)
 }
 
-const translationProgressSectionRegex = /<!-- Translations - START -->(.|\n)+<!-- Translations - END -->/gm
+const translationProgressSectionRegex = /<!-- Translations - START -->[^<>]+<!-- Translations - END -->/gm
 
 function updateReadmeContent(currentContent: string, newTable: string) {
     return currentContent.replace(
